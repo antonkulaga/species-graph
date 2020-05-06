@@ -14,8 +14,7 @@ object ExpressionTable{
   }
 }
 
-case class ExpressionTable(referenceGenes: Vector[String], samples: Vector[SampleMini] ,  exp: Expressions) {
-
+case class ExpressionTable(referenceGenes: Vector[String], samples: Vector[SampleMini],  exp: Expressions) {
 
   /*
   def getExpressionsWithSum(genes: Vector[String], mode: OrthologyMode) = {
@@ -29,7 +28,8 @@ case class ExpressionTable(referenceGenes: Vector[String], samples: Vector[Sampl
     val genes_by_species: Map[String, Map[String, Vector[Orthology]]] = g.get_orthologs_by_species(genes, mode, species)
     exp.get_expressions_in_samples(genes_by_species, samplesBySpecies)
   }
-  */
+   */
+
 
     /*
   def write_expression_table(path: String,

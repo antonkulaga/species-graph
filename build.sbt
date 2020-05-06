@@ -6,7 +6,7 @@ name := "species-graph"
 
 organization := "group.aging-research"
 
-version := "0.0.6"
+version := "0.0.7"
 
 isSnapshot := false
 
@@ -39,3 +39,5 @@ libraryDependencies += "com.lihaoyi" %% "pprint" % "0.5.6"
 libraryDependencies += "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.4"
 
 libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.8.0"
+
+libraryDependencies += "com.monovore" %% "decline" % "1.0.0"

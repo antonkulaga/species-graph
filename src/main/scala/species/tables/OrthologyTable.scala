@@ -47,15 +47,11 @@ class OrthologyTable(ensemblSpecies: IndexedSeq[EnsemblSpecies], g: Genes = Gene
                                  geneSlides: Vector[Vector[String]],
                                  agg: Map[String, Vector[Orthology]] => Map[String, String]): Unit = {
     for ((slide, i) <- geneSlides.zipWithIndex) {
-      val orthologsBySpecies: Map[String, ListMap[String, Vector[Orthology]]] = g.get_orthologs(slide, orthologyMode).mapValues{
-        case values =>
+      val orthologsBySpecies: Map[String, ListMap[String, Vector[Orthology]]] = g.get_orthologs(slide, orthologyMode).mapValues{ values =>
           ListMap.from(speciesNames.tail.map(s=>s->values.filter(o=>s.contains(o.species))))
       }
-      pprint.pprintln(speciesNames)
-      println("==================")
-      println(orthologsBySpecies.head._2)
       val p = this.write_by_species(path, orthologsBySpecies , headers = (i == 0))(agg)
-      println("slide_" + i + " :" + p)
+      println("slide_" + i + " :" + p.pathAsString)
     }
   }
 

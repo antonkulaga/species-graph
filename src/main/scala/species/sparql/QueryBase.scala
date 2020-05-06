@@ -7,7 +7,7 @@ import org.eclipse.rdf4j.sparqlbuilder.core.SparqlBuilder
 import org.eclipse.rdf4j.sparqlbuilder.core.query.SelectQuery
 import org.eclipse.rdf4j.sparqlbuilder.graphpattern.{GraphName, GraphPatterns, TriplePattern}
 import org.eclipse.rdf4j.sparqlbuilder.rdf.{RdfObject, RdfPredicate, RdfSubject}
-
+import scala.util._
 import scala.collection.immutable._
 
 /**
@@ -24,6 +24,15 @@ trait QueryBase extends Prefixes {
 
   def get_query(query: String): Vector[ListMap[String, String]] =withConnection{ con =>
     con.prepareTupleQuery(query).evaluate().map(f=>f.toMapString).toVector
+  }
+
+  def update_and_check_query(update: String, query: String): Try[Vector[ListMap[String, String]]] = Try{
+    insert_query(update)
+    get_query(query)
+  }
+
+  def insert_query(UpdateQuery: String) = withConnection{ con =>
+    con.prepareUpdate(UpdateQuery).execute()
   }
 
   def serverURL: String ="http://10.40.3.21:7200/"

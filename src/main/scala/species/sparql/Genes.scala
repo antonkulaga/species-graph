@@ -20,10 +20,7 @@ case class Genes(speciesName: String = "Homo_sapiens",
 
   def get_orthologs(genes: Seq[String], orthologyMode: OrthologyMode): Map[String, Vector[Orthology]] = {
     val gs = genes.map(unUri)
-    val orthology =
-      s"""
-         |  values ?orthology { ${if(orthologyMode.one2one) "ens:ortholog_one2one" else ""} ${if(orthologyMode.one2many) "ens:ortholog_one2many" else ""} ${if(orthologyMode.many2many) "ens:ortholog_many2many" else ""}  } .
-         |""".stripMargin
+    val orthology = orthologyMode.as_values
     val query = s"""$commonPrefixes
                    |
                    |SELECT * WHERE
