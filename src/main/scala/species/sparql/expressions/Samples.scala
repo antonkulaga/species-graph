@@ -1,20 +1,22 @@
-package species.sparql
+package species.sparql.expressions
+
+import species.sparql.QueryBase
+
 import scala.collection.immutable._
 import scala.util.Try
 
 case class SampleMini(run: String, species: String, tissue: String, lifespan: Double, animal_class: String)
-import scala.collection.compat._
-object Samples extends Samples
-class Samples extends QueryBase{
+object Samples extends Samples("http://10.40.3.21:7200/")
+class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBase{
 
   def get_stats_by_species(): Map[String, Map[String, Int]] = {
-    get_all_samples_mini().groupBy(s=>s.species)
-      .mapValues(v=>v.groupBy(sv=>sv.tissue).mapValues(_.length))
+    val mp = get_all_samples_mini().groupBy(s=>s.species)
+    mp.map{ case (k, v) => k->v.groupBy(sv=>sv.tissue).map{ case (k, v)=>k->v.length} }
   }
 
   def get_stats_by_tissue(): Map[String, Map[String, Int]] = {
-    get_all_samples_mini().groupBy(s=>s.tissue)
-      .mapValues(v=>v.groupBy(sv=>sv.species).mapValues(_.length))
+    val mp = get_all_samples_mini().groupBy(s=>s.tissue)
+    mp.map{ case (k, v) => k->v.groupBy(sv=>sv.tissue).map{ case (k, v)=>k->v.length} }
   }
 
   def get_samples_by_tissue(tissue: String, project: String = ":Cross-species"): Vector[SampleMini] = {
@@ -29,7 +31,7 @@ class Samples extends QueryBase{
                    |    ?species :has_lifespan ?lifespan .
                    |} ORDER BY ?species ?bioproject ?series ?run
                    |""".stripMargin
-    get_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
+    select_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
   }
 
   def get_all_samples_mini(project: String = ":Cross-species"): Vector[SampleMini] = {
@@ -43,7 +45,22 @@ class Samples extends QueryBase{
       |    ?species :is_animal_class ?animal_class .
       |} ORDER BY ?species ?bioproject ?series ?run
       |""".stripMargin
-    get_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
+    select_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
+  }
+
+  def get_all_samples_mini_by_runs(runs: Seq[String], project: String = ":Cross-species"): Vector[SampleMini] = {
+    val query = s"""${commonPrefixes}
+                   |
+                   |SELECT * WHERE
+                   |{
+                   |    values ?run ${runs.map(r=>this.sra(r)).mkString(" ")}
+                   |    ?run samples:has_organism ?species . #species
+                   |    ?run samples:used_in_project ${unUri(project)} . #defines the project
+                   |    ?run samples:of_tissue ?tissue . #gets tissue
+                   |    ?species :is_animal_class ?animal_class .
+                   |} ORDER BY ?species ?bioproject ?series ?run
+                   |""".stripMargin
+    select_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
   }
 
   def get_all_samples(project: String = ":Cross-species"): Vector[ListMap[String, String]] = {
@@ -75,7 +92,7 @@ class Samples extends QueryBase{
       |    ?run samples:has_protocol ?protocol .
       |} ORDER BY ?species ?bioproject ?series ?run
       |""".stripMargin
-    get_query(query)
+    select_query(query)
   }
 
   def get_mammalian_samples_mini(): Vector[SampleMini] = get_samples_mini_by_class("ens:Mammalia")
@@ -92,7 +109,7 @@ class Samples extends QueryBase{
                    |    ?species :has_lifespan ?lifespan .
                    |} ORDER BY ?species ?bioproject ?series ?run
                    |""".stripMargin
-    get_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
+    select_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
   }
 
 

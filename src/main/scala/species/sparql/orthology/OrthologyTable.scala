@@ -1,15 +1,19 @@
-package species.tables
+package species.sparql.orthology
 
 import better.files.File
-import species.sparql._
+
+import scala.collection.compat._
 import scala.collection.immutable._
 import scala.compat._
-import scala.collection.compat._
+
+object OrthologyTable {
+  type Aggregation = Map[String, Vector[Orthology]]=>Map[String, String]
+}
 /**
  * Class that comparised orthology tables by concating
  */
-class OrthologyTable(ensemblSpecies: IndexedSeq[EnsemblSpecies], g: Genes = Genes.default) extends GenesAggregator   {
-
+class OrthologyTable(ensemblSpecies: IndexedSeq[EnsemblSpecies], g: OrthologyManager = OrthologyManager.default) extends GenesAggregator   {
+  import OrthologyTable.Aggregation
   lazy val referenceSpecies: EnsemblSpecies = ensemblSpecies.head
   lazy val otherSpecies: IndexedSeq[EnsemblSpecies] = ensemblSpecies.tail
   lazy val speciesNames: IndexedSeq[String] = ensemblSpecies.map(_.latin_name)
@@ -47,8 +51,8 @@ class OrthologyTable(ensemblSpecies: IndexedSeq[EnsemblSpecies], g: Genes = Gene
                                  geneSlides: Vector[Vector[String]],
                                  agg: Map[String, Vector[Orthology]] => Map[String, String]): Unit = {
     for ((slide, i) <- geneSlides.zipWithIndex) {
-      val orthologsBySpecies: Map[String, ListMap[String, Vector[Orthology]]] = g.get_orthologs(slide, orthologyMode).mapValues{ values =>
-          ListMap.from(speciesNames.tail.map(s=>s->values.filter(o=>s.contains(o.species))))
+      val orthologsBySpecies= g.orthologs(slide, orthologyMode).groupBy(_.species).map{ case (key, values) =>
+          key -> ListMap.from(speciesNames.tail.map(s=>s->values.filter(o=>s.contains(o.species))))
       }
       val p = this.write_by_species(path, orthologsBySpecies , headers = (i == 0))(agg)
       println("slide_" + i + " :" + p.pathAsString)
@@ -80,7 +84,7 @@ class OrthologyTable(ensemblSpecies: IndexedSeq[EnsemblSpecies], g: Genes = Gene
       else speciesNames
       f.appendLine(sp_headers.mkString(sep))
     }
-    val grouped_genes: Map[String, Map[String, String]] = genes.mapValues(v=>agg_by_species(v))
+    val grouped_genes: Map[String, Map[String, String]] = genes.map{ case (k, v)=>k->agg_by_species(v)}
     for{
       (reference, by_species) <- grouped_genes
       if by_species.nonEmpty

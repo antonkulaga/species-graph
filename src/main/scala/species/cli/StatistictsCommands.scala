@@ -5,10 +5,10 @@ import java.nio.file.Path
 
 import better.files.File
 import com.monovore.decline.{Command, Opts}
-import species.sparql.{EnsemblSpecies, Genes, OrthologyMode, Species, Statistics}
-import species.tables.OrthologyTable
 import cats.implicits._
 import com.monovore.decline._
+import species.sparql.analysis.Statistics
+import species.sparql.orthology.{OrthologyTable, Species}
 
 import scala.util.{Failure, Success}
 

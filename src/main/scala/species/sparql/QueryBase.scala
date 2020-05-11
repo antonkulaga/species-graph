@@ -1,14 +1,14 @@
 package species.sparql
 
-import org.eclipse.rdf4j.repository.RepositoryConnection
+import org.eclipse.rdf4j.repository._
 import org.eclipse.rdf4j.repository.manager.RemoteRepositoryManager
 import org.eclipse.rdf4j.sparqlbuilder.constraint.Operand
 import org.eclipse.rdf4j.sparqlbuilder.core.SparqlBuilder
-import org.eclipse.rdf4j.sparqlbuilder.core.query.SelectQuery
 import org.eclipse.rdf4j.sparqlbuilder.graphpattern.{GraphName, GraphPatterns, TriplePattern}
 import org.eclipse.rdf4j.sparqlbuilder.rdf.{RdfObject, RdfPredicate, RdfSubject}
-import scala.util._
-import scala.collection.immutable._
+
+import scala.collection.immutable.ListMap
+import scala.util.Try
 
 /**
  * Trait that does queries to graphdb
@@ -22,20 +22,20 @@ trait QueryBase extends Prefixes {
   val orthology_one2many = ens("ortholog_one2many")
   val orthology_many2many = ens("ortholog_many2many")
 
-  def get_query(query: String): Vector[ListMap[String, String]] =withConnection{ con =>
+  def select_query(query: String): Vector[ListMap[String, String]] =withConnection{ con =>
     con.prepareTupleQuery(query).evaluate().map(f=>f.toMapString).toVector
   }
 
   def update_and_check_query(update: String, query: String): Try[Vector[ListMap[String, String]]] = Try{
     insert_query(update)
-    get_query(query)
+    select_query(query)
   }
 
   def insert_query(UpdateQuery: String) = withConnection{ con =>
     con.prepareUpdate(UpdateQuery).execute()
   }
 
-  def serverURL: String ="http://10.40.3.21:7200/"
+  def serverURL: String //="http://10.40.3.21:7200/"
   lazy val repositoryManager = {
     val manager = new RemoteRepositoryManager( serverURL )
     manager.init()
@@ -70,8 +70,6 @@ trait QueryBase extends Prefixes {
   def triple(subject: String, predicate: String, obj: String): TriplePattern = {
     GraphPatterns.tp(res(subject), res(predicate), res(obj))
   }
-
-  import org.eclipse.rdf4j.sparqlbuilder.core.query.Queries
 
   def unUri(str: String): String = if(str.startsWith("http")) "<" + str + ">" else str
 

@@ -1,17 +1,3 @@
-import species.sparql._
-import pprint.pprintln
-import better.files._
-import File._
-import java.io.{File => JFile}
-
-import species.tables._
-import species.tables.{Aggregation, ExpressionTable, OrthologyTable}
-
-import scala.collection.compat._
-import cats.implicits._
-import java.nio
-import java.nio.file.Path
-
 import com.monovore.decline._
 import species.cli.CLI
 

@@ -1,9 +1,13 @@
-package species.sparql
+package species.sparql.orthology
+
+import species.sparql.QueryBase
 
 import scala.collection.immutable.{Map, Vector}
 case class EnsemblSpecies(latin_name: String, common_name: String, animal_class: String, lifespan: String, ensembl_url: String, taxon: String)
-object Species extends Species
-class Species extends QueryBase {
+object Species extends Species("http://10.40.3.21:7200/") {
+  def apply(serverURL: String) = new Species(serverURL)
+}
+class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBase {
   def get_mammals_in_samples(): Vector[String] = get_species_in_samples("ens:Mammalia")
 
   def get_species_in_samples(): Vector[EnsemblSpecies] = {
@@ -19,7 +23,7 @@ class Species extends QueryBase {
                    |    ?species :has_ensembl_url ?ensembl_url .
                    |} ORDER BY DESC(?lifespan)
                    |""".stripMargin
-    get_query(query)
+    select_query(query)
       .map(f=>EnsemblSpecies(f("species"), f("common_name"), f("animal_class"),  f("lifespan"), f("ensembl_url"),  f("taxon")))
   }
 
@@ -31,7 +35,7 @@ class Species extends QueryBase {
                    |    ?species :is_animal_class ${animal_class} .
                    |} ORDER BY ?species
                    |""".stripMargin
-    get_query(query).map(f=>f("species"))
+    select_query(query).map(f=>f("species"))
   }
 
   def get_species_in_samples_by_class(): Map[String, Vector[String]] = {
@@ -42,7 +46,7 @@ class Species extends QueryBase {
                   |    ?species :is_animal_class ?class
                   |} ORDER BY ?class ?species
                   |""".stripMargin
-    get_query(query).groupBy(mp=>mp("class")).mapValues(v=>v.map(_("species")))
+    select_query(query).groupBy(mp=>mp("class")).map{ case (k, v)=>k->v.map(_("species"))}
   }
 
 }

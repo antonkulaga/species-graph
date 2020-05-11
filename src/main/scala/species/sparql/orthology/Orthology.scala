@@ -1,4 +1,4 @@
-package species.sparql
+package species.sparql.orthology
 
 import scala.collection.immutable.ListMap
 
@@ -8,7 +8,7 @@ object Orthology{
       mp("reference_gene"),
       mp("orthology"),
       mp("ortholog"),
-      mp("ortholog_symbol"),
+      mp.getOrElse("ortholog_symbol", ""),
       mp("species"),
       mp("confidence")
     )

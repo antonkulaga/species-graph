@@ -1,9 +1,9 @@
 package species.sparql
 
-import org.eclipse.rdf4j.sparqlbuilder.core.SparqlBuilder
 import org.eclipse.rdf4j.sparqlbuilder.rdf.{Iri, Rdf}
 
-object Prefixes
+
+
 class Prefixes {
 
   lazy val commonPrefixes: String =
@@ -14,6 +14,7 @@ class Prefixes {
       |PREFIX ens: <http://rdf.ebi.ac.uk/resource/ensembl/>
       |PREFIX samples:<http://aging-research.group/samples/>
       |PREFIX ncbi: <https://www.ncbi.nlm.nih.gov/>
+      |PREFIX sra: <https://www.ncbi.nlm.nih.gov/sra/>
       |PREFIX : <http://aging-research.group/resource/>
       |""".stripMargin
 
@@ -25,9 +26,10 @@ class Prefixes {
     "samples" -> "http://aging-research.group/samples/"
   )
 
-  def ens(str: String) = iri("ens:" + str)
-  def u(str: String) = if(str.contains(":")) iri(str) else iri(":"+str)
-  def samples(str: String) = iri("samples:" + str)
+  def ens(str: String): Iri = if(str.contains("ens:")) iri(str) else iri("ens:" + str)
+  def u(str: String): Iri = if(str.contains(":")) iri(str) else iri(":"+str)
+  def samples(str: String): Iri = if(str.contains("samples:")) iri(str)  else iri("samples:" + str)
+  def sra(str: String): Iri = if(str.contains("sra:")) iri(str)  else iri("sra:"+str)
 
   def iri(str: String): Iri = str.indexOf(":") match {
     case -1 => Rdf.iri(str)

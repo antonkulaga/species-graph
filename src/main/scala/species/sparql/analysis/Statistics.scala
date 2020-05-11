@@ -1,8 +1,11 @@
-package species.sparql
+package species.sparql.analysis
+
+import species.sparql.QueryBase
+import species.sparql.orthology.EnsemblSpecies
 
 import scala.util._
-object Statistics extends Statistics
-class Statistics extends QueryBase {
+object Statistics extends Statistics("http://10.40.3.21:7200/")
+class Statistics(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBase {
 
   def writeManySpecies(species: Vector[EnsemblSpecies], orthology: String = "ens:ortholog_one2many") = {
     for(s <- species)
