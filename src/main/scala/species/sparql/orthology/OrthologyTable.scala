@@ -12,7 +12,8 @@ object OrthologyTable {
 /**
  * Class that comparised orthology tables by concating
  */
-class OrthologyTable(ensemblSpecies: IndexedSeq[EnsemblSpecies], g: OrthologyManager = OrthologyManager.default) extends GenesAggregator   {
+class OrthologyTable(ensemblSpecies: IndexedSeq[EnsemblSpecies],
+                     orthologyManager: OrthologyManager = OrthologyManager.default) extends GenesAggregator   {
   import OrthologyTable.Aggregation
   lazy val referenceSpecies: EnsemblSpecies = ensemblSpecies.head
   lazy val otherSpecies: IndexedSeq[EnsemblSpecies] = ensemblSpecies.tail
@@ -51,7 +52,7 @@ class OrthologyTable(ensemblSpecies: IndexedSeq[EnsemblSpecies], g: OrthologyMan
                                  geneSlides: Vector[Vector[String]],
                                  agg: Map[String, Vector[Orthology]] => Map[String, String]): Unit = {
     for ((slide, i) <- geneSlides.zipWithIndex) {
-      val orthologsBySpecies= g.orthologs(slide, orthologyMode).groupBy(_.species).map{ case (key, values) =>
+      val orthologsBySpecies= orthologyManager.orthologs(slide, orthologyMode).groupBy(_.species).map{ case (key, values) =>
           key -> ListMap.from(speciesNames.tail.map(s=>s->values.filter(o=>s.contains(o.species))))
       }
       val p = this.write_by_species(path, orthologsBySpecies , headers = (i == 0))(agg)

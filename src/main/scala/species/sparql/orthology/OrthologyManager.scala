@@ -14,14 +14,11 @@ object OrthologyManager{
 case class OrthologyManager(speciesName: String = "Homo_sapiens",
                             override val serverURL: String ="http://10.40.3.21:7200/")
   extends QueryBase {
-  val referenceSpecies: Iri = u(speciesName)
 
   def orthologs_by_ref(referenceGenes: Seq[String],orthologyMode: OrthologyMode,
-                                 species: Seq[String]): ListMap[String, Vector[Orthology]] = {
+                                 species: Seq[String]): Map[String, Vector[Orthology]] = {
     val ortho: Vector[Orthology] = orthologs(referenceGenes, orthologyMode, species)
-    val mp: Map[String, Vector[Orthology]] = ortho.groupBy(f=>f.reference_gene)
-    //TODO: check unuri consequences
-    ListMap.from(referenceGenes.map(g=> g->mp.getOrElse(g, Vector.empty[Orthology])))
+    ortho.groupBy(f=>f.reference_gene)
   }
 
 
@@ -35,8 +32,6 @@ case class OrthologyManager(speciesName: String = "Homo_sapiens",
   def orthologs(referenceGenes: Seq[String],
                     orthologyMode: OrthologyMode,
                     species: Seq[String] = Vector.empty): Vector[Orthology] = {
-    val gs = referenceGenes.map(unUri)
-    val species_str = if(species.isEmpty) "" else s"values ?species { ${species.map(unUri).mkString(" ")} }"
     val orthology =
       s"""
          |  values ?orthology { ${if(orthologyMode.one2one) "ens:ortholog_one2one" else ""} ${if(orthologyMode.one2many) "ens:ortholog_one2many" else ""} ${if(orthologyMode.many2many) "ens:ortholog_many2many" else ""}  } .
@@ -46,10 +41,10 @@ case class OrthologyManager(speciesName: String = "Homo_sapiens",
                    |
                    |SELECT * WHERE
                    |{
-                   |    $species_str
-                   |    values ?reference_gene { ${gs.map(unUri).mkString(" ")} } . #put reference genes selected by the user
+                   |    ${values("species", species.map(u))}
+                   |    ${values("reference_gene", referenceGenes.map(ens))} #put reference genes selected by the user
                    |    ${conf}
-                   |    GRAPH "?confidence" {
+                   |    GRAPH ?confidence {
                    |      ${orthology}
                    |      ?reference_gene ?orthology ?ortholog .
                    |	  }
@@ -58,10 +53,15 @@ case class OrthologyManager(speciesName: String = "Homo_sapiens",
                    |    OPTIONAL { ?ortholog rdfs:label ?ortholog_symbol } .
                    |}
       """.stripMargin
+    //println("=============")
+    //println(query)
+    //println("=============")
     select_query(query).map(f=>Orthology(f))
   }
 
+
   def speciesGenes(species: String = "http://aging-research.group/resource/Homo_sapiens"): Vector[String] = {
+    import RDF._
       val gene = variable("gene")
     val sp = if(species.contains(":")) species else s"http://aging-research.group/resource/${species}"
       val selectQuery: SelectQuery = Queries.SELECT(gene)

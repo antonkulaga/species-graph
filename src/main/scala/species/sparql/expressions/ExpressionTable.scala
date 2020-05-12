@@ -24,13 +24,13 @@ case class ExpressionTable(referenceGenes: Vector[String], exp: MultiSpeciesExpr
   def take(num: Int): ExpressionTable = copy(referenceGenes = referenceGenes.take(num))
   def split(num: Int): (ExpressionTable, ExpressionTable) = (take(num), skip(num))
 
-  def write_simple_expression_table(path: String,
-                                    mode: OrthologyMode,
-                                    header: Boolean = true,
-                                    sep: String = "\t",
-                                    withGeneNames : Boolean = false,
-                                    na: String = "N/A",
-                                    sl: Int = 1000, max_slides: Int = Int.MaxValue,
+  def write_table(path: String,
+                  mode: OrthologyMode,
+                  header: Boolean = true,
+                  sep: String = "\t",
+                  withGeneNames : Boolean = false,
+                  na: String = "N/A",
+                  sl: Int = 1000, max_slides: Int = Int.MaxValue,
                                    )(implicit orthologyManager: OrthologyManager) = {
     val f = File(path).createFileIfNotExists(true)
     val sls = referenceGenes.sliding(sl, sl)

@@ -23,13 +23,11 @@ class Prefixes {
     "" -> "http://aging-research.group/resource/",
     "base" -> "http://aging-research.group/resource/",
     "ens" ->"http://rdf.ebi.ac.uk/resource/ensembl/",
-    "samples" -> "http://aging-research.group/samples/"
+    "samples" -> "http://aging-research.group/samples/",
+    "sra" -> "https://www.ncbi.nlm.nih.gov/sra/",
+    "ncbi" -> "https://www.ncbi.nlm.nih.gov/"
   )
 
-  def ens(str: String): Iri = if(str.contains("ens:")) iri(str) else iri("ens:" + str)
-  def u(str: String): Iri = if(str.contains(":")) iri(str) else iri(":"+str)
-  def samples(str: String): Iri = if(str.contains("samples:")) iri(str)  else iri("samples:" + str)
-  def sra(str: String): Iri = if(str.contains("sra:")) iri(str)  else iri("sra:"+str)
 
   def iri(str: String): Iri = str.indexOf(":") match {
     case -1 => Rdf.iri(str)
@@ -37,4 +35,28 @@ class Prefixes {
       val pre = str.substring(0, i)
       Rdf.iri(prefixes.get(pre).map(v => str.replace(pre + ":", v)).getOrElse(str))
   }
+
+  def ens(str: String)= if(str.contains("ens:")) iriStr(str) else iriStr("ens:" + str)
+  def u(str: String) = if(str.contains(":")) iriStr(str) else iriStr(":"+str)
+  def samples(str: String) = if(str.contains("samples:")) iriStr(str)  else iriStr("samples:" + str)
+  def sra(str: String) = if(str.contains("sra:")) iriStr(str)  else iriStr("sra:"+str)
+
+  def iriStr(str: String) = str.indexOf(":") match {
+    case -1 => if(str.startsWith("http")) "<" + str + ">" else str
+    case i =>
+      val pre = str.substring(0, i)
+      val result = prefixes.get(pre).map(v => "<" + str.replace(pre + ":", v) + ">").getOrElse(str)
+      if(result.startsWith("http")) "<" + result + ">" else result
+  }
+  //def unUri(str: String): String = if(str.startsWith("http")) "<" + str + ">" else str
+
+
+
+  /**
+   * Tries to extract localname (after prefix or "/")
+   * @param str
+   * @return
+   */
+  def localname(str: String)  = str.substring(Math.max(str.lastIndexOf("/"),str.lastIndexOf(":"))+1)
+
 }

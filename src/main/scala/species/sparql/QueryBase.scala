@@ -8,7 +8,7 @@ import org.eclipse.rdf4j.sparqlbuilder.graphpattern.{GraphName, GraphPatterns, T
 import org.eclipse.rdf4j.sparqlbuilder.rdf.{RdfObject, RdfPredicate, RdfSubject}
 
 import scala.collection.immutable.ListMap
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * Trait that does queries to graphdb
@@ -16,14 +16,22 @@ import scala.util.Try
 trait QueryBase extends Prefixes {
 
 
-  val has_gene = iri(":has_gene")
+  val has_gene = iriStr(":has_gene")
 
   val orthology_one2one = ens("ortholog_one2one")
   val orthology_one2many = ens("ortholog_one2many")
   val orthology_many2many = ens("ortholog_many2many")
 
-  def select_query(query: String): Vector[ListMap[String, String]] =withConnection{ con =>
-    con.prepareTupleQuery(query).evaluate().map(f=>f.toMapString).toVector
+  def select_query(query: String): Vector[ListMap[String, String]] = withConnection{ con =>
+    Try{
+      con.prepareTupleQuery(query).evaluate().map(f=>f.toMapString).toVector
+    } match {
+      case Success(value) => value
+      case Failure(e) =>
+        println("FAILED SELECT QUERY:")
+        println(query)
+        throw e
+    }
   }
 
   def update_and_check_query(update: String, query: String): Try[Vector[ListMap[String, String]]] = Try{
@@ -54,24 +62,26 @@ trait QueryBase extends Prefixes {
     result
   }
 
-  def variable(str: String) = {
-    SparqlBuilder.`var`(str)
-  }
+ object RDF{
+   def variable(str: String) = {
+     SparqlBuilder.`var`(str)
+   }
 
-  def res(str: String): RdfSubject
-    with RdfPredicate
-    with RdfObject
-    with Operand
-    with GraphName =
-    if(str.startsWith("?")) variable(str.tail) else
-      u(str)
+   def res(str: String): RdfSubject
+     with RdfPredicate
+     with RdfObject
+     with Operand
+     with GraphName =
+     if(str.startsWith("?")) variable(str.tail) else
+       iri(u(str))
 
 
-  def triple(subject: String, predicate: String, obj: String): TriplePattern = {
-    GraphPatterns.tp(res(subject), res(predicate), res(obj))
-  }
-
-  def unUri(str: String): String = if(str.startsWith("http")) "<" + str + ">" else str
+   def triple(subject: String, predicate: String, obj: String): TriplePattern = {
+     GraphPatterns.tp(res(subject), res(predicate), res(obj))
+   }
+ }
+  def values(name: String, value: String): String = if(value == "") "" else s"VALUES ?${name.replace("?", "")} { ${value} } ."
+  def values(name: String, vals: Seq[String]): String = if(vals.isEmpty) "" else values(name, vals.mkString(" "))
 
 
 }

@@ -10,12 +10,12 @@ object Samples extends Samples("http://10.40.3.21:7200/")
 class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBase{
 
   def get_stats_by_species(): Map[String, Map[String, Int]] = {
-    val mp = get_all_samples_mini().groupBy(s=>s.species)
+    val mp = samples_mini_by_runs().groupBy(s=>s.species)
     mp.map{ case (k, v) => k->v.groupBy(sv=>sv.tissue).map{ case (k, v)=>k->v.length} }
   }
 
   def get_stats_by_tissue(): Map[String, Map[String, Int]] = {
-    val mp = get_all_samples_mini().groupBy(s=>s.tissue)
+    val mp = samples_mini_by_runs().groupBy(s=>s.tissue)
     mp.map{ case (k, v) => k->v.groupBy(sv=>sv.tissue).map{ case (k, v)=>k->v.length} }
   }
 
@@ -25,8 +25,8 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
                    |SELECT * WHERE
                    |{
                    |    ?run samples:has_organism ?species .
-                   |    ?run samples:used_in_project ${unUri(project)} . #defines the project
-                   |    ?run samples:of_tissue ${unUri(tissue)} . #gets tissue
+                   |    ?run samples:used_in_project ${u(project)} . #defines the project
+                   |    ?run samples:of_tissue ${u(tissue)} . #gets tissue
                    |    ?species :has_lifespan ?lifespan .
                    |    ?species :has_lifespan ?lifespan .
                    |} ORDER BY ?species ?bioproject ?series ?run
@@ -34,28 +34,20 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
     select_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
   }
 
-  def get_all_samples_mini(project: String = ":Cross-species"): Vector[SampleMini] = {
+  /**
+   * Gets samples mini
+   * @param runs
+   * @param project
+   * @return
+   */
+  def samples_mini_by_runs(runs: Seq[String] = Seq.empty,project: String = ":Cross-species"): Vector[SampleMini] = {
+    val runsStr = values("run", runs.map(r=>this.sra(r)))
     val query = s"""${commonPrefixes}
-      |
-      |SELECT * WHERE
-      |{
-      |    ?run samples:has_organism ?species . #species
-      |    ?run samples:used_in_project ${unUri(project)} . #defines the project
-      |    ?run samples:of_tissue ?tissue . #gets tissue
-      |    ?species :is_animal_class ?animal_class .
-      |} ORDER BY ?species ?bioproject ?series ?run
-      |""".stripMargin
-    select_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
-  }
-
-  def get_all_samples_mini_by_runs(runs: Seq[String], project: String = ":Cross-species"): Vector[SampleMini] = {
-    val query = s"""${commonPrefixes}
-                   |
                    |SELECT * WHERE
                    |{
-                   |    values ?run ${runs.map(r=>this.sra(r)).mkString(" ")}
+                   |    $runsStr
                    |    ?run samples:has_organism ?species . #species
-                   |    ?run samples:used_in_project ${unUri(project)} . #defines the project
+                   |    ?run samples:used_in_project ${u(project)} . #defines the project
                    |    ?run samples:of_tissue ?tissue . #gets tissue
                    |    ?species :is_animal_class ?animal_class .
                    |} ORDER BY ?species ?bioproject ?series ?run
@@ -63,7 +55,7 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
     select_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
   }
 
-  def get_all_samples(project: String = ":Cross-species"): Vector[ListMap[String, String]] = {
+  def samples_full(project: String = ":Cross-species"): Vector[ListMap[String, String]] = {
    val query =  s"""${commonPrefixes}
       |SELECT * WHERE
       |{
@@ -95,17 +87,28 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
     select_query(query)
   }
 
-  def get_mammalian_samples_mini(): Vector[SampleMini] = get_samples_mini_by_class("ens:Mammalia")
+  def get_mammalian_samples_mini(): Vector[SampleMini] = samples_mini_by_class_and_tissue("ens:Mammalia")
 
-  def get_samples_mini_by_class(animal_class: String, project: String = ":Cross-species"): Vector[SampleMini] = {
+  /**
+   *
+   * @param animal_class animal class (loads all if not set)
+   * @param tissue animal tissue (loads all if not set)
+   * @param project
+   * @return
+   */
+  def samples_mini_by_class_and_tissue(animal_class: String ="", tissue: String ="", project: String = ":Cross-species"): Vector[SampleMini] = {
+    val animal_class_str = values("animal_class", animal_class)
+    val tissue_str = values("tissue", tissue)
     val query = s"""${commonPrefixes}
                    |
                    |SELECT * WHERE
                    |{
+                   |    ${animal_class_str}
+                   |    ${tissue_str}
                    |    ?run samples:has_organism ?species .
                    |    ?run samples:used_in_project ${project} . #defines the project
                    |    ?run samples:of_tissue ?tissue . #gets tissue
-                   |    ?species :is_animal_class ${animal_class} .
+                   |    ?species :is_animal_class ?animal_class .
                    |    ?species :has_lifespan ?lifespan .
                    |} ORDER BY ?species ?bioproject ?series ?run
                    |""".stripMargin

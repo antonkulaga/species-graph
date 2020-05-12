@@ -20,10 +20,9 @@ object SplitGenes extends Enum[SplitGenes] {
   val values = findValues
 }
 
+
 trait OrthologyCommands {
 
-  lazy val g: OrthologyManager = OrthologyManager()
-  lazy val humanGenes: Vector[String] = g.speciesGenes()
   lazy val animal_classes = Vector(
     "http://rdf.ebi.ac.uk/resource/ensembl/Mammalia",
     "http://rdf.ebi.ac.uk/resource/ensembl/Aves",
@@ -33,51 +32,64 @@ trait OrthologyCommands {
     "http://rdf.ebi.ac.uk/resource/ensembl/Coelacanthi",
   )
 
+  lazy val genes: Opts[String] = Opts.option[String](long = "genes", help = "genes: either species_name or exact list (default Homo_sapiens)").withDefault("Homo_sapiens")
+
+
+
   lazy val orthologyPath: Opts[String] = Opts.option[String](long = "path", help = "Folder to store orthology tables")
     //.withDefault("/data/species/by_class_and_lifespan")
 
   //lazy val classes: Opts[String] = Opts.option[String](long = "classes", help = "Animal classes").withDefault("all")
 
-
-
-
   lazy val split: Opts[SplitGenes] = Opts.option[SplitGenes](long = "split", help = "How to split files (nosplit, byclass, byspecies)").withDefault(SplitGenes.NoSplit)
-
 
   lazy val server: Opts[String] = Opts.option[String](long = "server", help = "URL of GraphDB server, default = http://10.40.3.21:7200").withDefault("http://10.40.3.21:7200")
 
 
-  def orthology_tables(path: String, classes: String): Unit = {
-    val species: Vector[EnsemblSpecies] = Species.get_species_in_samples()
-    val folder = File(path)
+  protected def extract_genes(gs: String)(implicit orthologyManager: OrthologyManager): Vector[String] = {
+    if(gs.toLowerCase.contains("homo_sapiens")) orthologyManager.speciesGenes() else {
+      if(gs.contains(":") || gs.contains(";"))
+        gs.split(";").map(g=> orthologyManager.ens(g)).toVector
+      else
+        orthologyManager.speciesGenes((":"+gs).replace("::", ":"))
+    }
 
-    writeGenes(humanGenes, species, folder)
+  }
+
+  def write_orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String) = (path, split, server, genes) match {
+
+    case (path, SplitGenes.NoSplit, server, gs) =>
+      val species: Vector[EnsemblSpecies] = new Species(server).species_in_samples()
+      implicit val orthologyManager = new OrthologyManager(server)
+      val reference_genes = extract_genes(gs)
+
+      val folder = File(path)
+
+      writeGenes(reference_genes, species, folder)
+
+    case (path, SplitGenes.ByClass, server, gs) =>
+
+      val folder = File(path)
+      implicit val orthologyManager = new OrthologyManager(server)
+      val reference_genes = extract_genes(gs)
+      val speciesGrouped= new Species(server).species_in_samples().groupBy(_.animal_class)
+      for{
+        (cl, sp) <- speciesGrouped
+        cl_name = cl
+          .replace("http://rdf.ebi.ac.uk/resource/ensembl/", "")
+          .replace("<", "").replace(">", "").replace("ens:", "")
+      }{
+        writeGenes(reference_genes, sp, folder / cl_name)
+      }
+
+    case (path, SplitGenes.BySpecies, server, gs) =>
+      println("Split by species not implemented yet")
   }
 
   lazy val orthologs: Command[Unit] = Command(
     name = "orthologs", header = "Generate orthology tables"
   ) {
-    (orthologyPath, split, server).mapN{
-      case (path, SplitGenes.NoSplit, server) =>
-        val species: Vector[EnsemblSpecies] = new Species(server).get_species_in_samples()
-        val folder = File(path)
-        writeGenes(humanGenes, species, folder)
-
-      case (path, SplitGenes.ByClass, server) =>
-        val folder = File(path)
-        val speciesGrouped= new Species(server).get_species_in_samples().groupBy(_.animal_class)
-        for{
-          (cl, sp) <- speciesGrouped
-          cl_name = cl
-            .replace("http://rdf.ebi.ac.uk/resource/ensembl/", "")
-            .replace("<", "").replace(">", "").replace("ens:", "")
-        }{
-          writeGenes(humanGenes, sp, folder / cl_name)
-        }
-
-      case (path, SplitGenes.BySpecies, server) =>
-       println("Split by species not implemented yet")
-    }
+    (orthologyPath, split, server, genes).mapN(write_orthologs_implementation)
   }
 
 

@@ -44,11 +44,11 @@ libraryDependencies += "com.monovore" %% "decline" % "1.0.0"
 
 libraryDependencies += "com.monovore" %% "decline-enumeratum" % "1.0.0"
 
+libraryDependencies += "org.scalatest" %% "scalatest-wordspec" % "3.2.0-M4" % Test
+
 licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 
 dockerBaseImage := "oracle/graalvm-ce:20.0.0-java8"
-
-//dockerBaseImage := "openjdk:11-oracle"
 
 daemonUserUid in Docker := None
 

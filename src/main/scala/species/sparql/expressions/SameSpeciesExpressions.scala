@@ -11,11 +11,12 @@ object SameSpeciesExpressions {
     new SameSpeciesExpressions(samples.head.species, samples,serverURL)
   }
 }
-class SameSpeciesExpressions(val species: String, val samples: Vector[SampleMini], val serverURL: String = "http://10.40.3.21:7200") extends QueryBase{
+class SameSpeciesExpressions(val species: String,
+                             val samples: Vector[SampleMini],
+                             val serverURL: String = "http://10.40.3.21:7200") extends QueryBase{
   require(samples.forall(s=>s.species == species), "all samples should be of the same species")
 
-  protected lazy val samplesStr = samples.map { s => unUri(s.run) }.mkString(" ")
-
+  lazy val runs = samples.map(_.run)
   /**
    * Gets orthology expressions per reference gene in a species
    * @param orthologs
@@ -39,19 +40,13 @@ class SameSpeciesExpressions(val species: String, val samples: Vector[SampleMini
    * @param genes in the species that we want to extract expressions from
    */
   def expressions(genes: Seq[String]): Vector[ExpressionValue] = {
-    val samplesStr = samples.map { s => unUri(s.run) }.mkString(" ")
-    //val geneStr = genes.map(g => "samples:has_" + g.replace("ens:", "").replace("http://rdf.ebi.ac.uk/resource/ensembl/", "") + "_expression").mkString(" ")
-    val genesStr = genes.map(g=>ens(g)).mkString(" ")
     val query =
       s"""${commonPrefixes}
-         |
-         |PREFIX sra: <https://www.ncbi.nlm.nih.gov/sra/>
          |SELECT ?run ?gene ?tpm WHERE
          |{
-         |    values ?run { $samplesStr  } .
-         |    values ?gene { $genesStr } .
+         |    ${values("run", runs.map(u))}
+         |    ${values("gene", genes.map(g=>ens(g)))}
          |    ?expression :expression_of ?gene .
-         |    ?run ?expression ?TPM #expression value of the gene inside sequencing run
          |    ?run ?expression ?tpm .
          |}
          |""".stripMargin
