@@ -58,5 +58,7 @@ class Prefixes {
    * @return
    */
   def localname(str: String)  = str.substring(Math.max(str.lastIndexOf("/"),str.lastIndexOf(":"))+1)
+  def contains_or_contained(a: String, b: String): Boolean = a.contains(b) || b.contains(a)
+  def contains_or_contained(seq: Seq[String], value: String): Boolean = seq.exists(contains_or_contained(_,value))
 
 }

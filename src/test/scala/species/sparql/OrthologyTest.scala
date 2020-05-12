@@ -11,6 +11,7 @@ class OrthilogySpec extends AnyWordSpec {
 
   "orthology" should   {
     "get proper genes" in {
+
       val ground_genes = Set(
         "ens:ENSMUSG00000020053","ens:ENSSSCG00000000857","ens:ENSBTAG00000011082"
       )
@@ -23,8 +24,6 @@ class OrthilogySpec extends AnyWordSpec {
 
       val by_ref = ortho.orthologs_by_ref(Vector("ens:ENSG00000017427"), OrthologyMode.all,Seq(":Mus_musculus", ":Bos_taurus", ":Sus_scrofa"))
       assert(by_ref.keySet.map(cut) === Set(cut("ens:ENSG00000017427")))
-
-
 
       val query = """
         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -48,7 +47,6 @@ class OrthilogySpec extends AnyWordSpec {
         |""".stripMargin
 
       //val results2 = ortho.select_query(query)
-
     }
   }
 }

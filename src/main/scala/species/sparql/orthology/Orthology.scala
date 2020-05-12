@@ -13,6 +13,9 @@ object Orthology{
       mp("confidence")
     )
   }
+
+  def self_orthology(reference_gene: String, symbol: String, species: String)  =
+    Orthology(reference_gene, "ens:ortholog_one2one", reference_gene, symbol, species, "http://rdf.ebi.ac.uk/resource/ensembl/confidence/high" )
 }
 /**
  * Orthology relation for a gene

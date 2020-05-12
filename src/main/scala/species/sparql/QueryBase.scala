@@ -15,7 +15,6 @@ import scala.util.{Failure, Success, Try}
  */
 trait QueryBase extends Prefixes {
 
-
   val has_gene = iriStr(":has_gene")
 
   val orthology_one2one = ens("ortholog_one2one")

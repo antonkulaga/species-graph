@@ -5,6 +5,37 @@ import species.sparql.orthology.Orthology
 import scala.collection.compat._
 import scala.collection.immutable._
 
+trait SpeciesExpressions extends QueryBase {
+  def samples: Vector[SampleMini]
+
+  lazy val runs: Vector[String] = samples.map(_.run)
+  lazy val runs_str: String = values("run", runs.map(u))
+
+  /**
+   * note: here we assume that runs  for the same species
+   *
+   * @param genes in the species that we want to extract expressions from
+   */
+  def expressions(genes: Seq[String]): Vector[ExpressionValue] = {
+    val query =
+      s"""${commonPrefixes}
+         |SELECT ?run ?gene ?tpm WHERE
+         |{
+         |    ${runs_str}
+         |    ${values("gene", genes.map(g=>ens(g)))}
+         |    ?expression :expression_of ?gene .
+         |    ?run ?expression ?tpm .
+         |}
+         |""".stripMargin
+    select_query(query).map(mp =>
+      ExpressionValue(
+        mp("run"),
+        mp("gene"),
+        mp("tpm").toDouble)
+    )
+  }
+}
+
 object SameSpeciesExpressions {
   def apply(samples: Vector[SampleMini], serverURL: String = "http://10.40.3.21:7200") = {
     require(samples.nonEmpty, "should have at least one sample")
@@ -13,10 +44,9 @@ object SameSpeciesExpressions {
 }
 class SameSpeciesExpressions(val species: String,
                              val samples: Vector[SampleMini],
-                             val serverURL: String = "http://10.40.3.21:7200") extends QueryBase{
+                             val serverURL: String = "http://10.40.3.21:7200") extends SpeciesExpressions {
   require(samples.forall(s=>s.species == species), "all samples should be of the same species")
 
-  lazy val runs = samples.map(_.run)
   /**
    * Gets orthology expressions per reference gene in a species
    * @param orthologs
@@ -34,27 +64,5 @@ class SameSpeciesExpressions(val species: String,
 
   def expressionsByGenesUnordered(genes: Seq[String]): Map[String, Vector[ExpressionValue]] = expressions(genes).groupBy(_.gene)
 
-  /**
-   * note: here we assume that runs  for the same species
-   *
-   * @param genes in the species that we want to extract expressions from
-   */
-  def expressions(genes: Seq[String]): Vector[ExpressionValue] = {
-    val query =
-      s"""${commonPrefixes}
-         |SELECT ?run ?gene ?tpm WHERE
-         |{
-         |    ${values("run", runs.map(u))}
-         |    ${values("gene", genes.map(g=>ens(g)))}
-         |    ?expression :expression_of ?gene .
-         |    ?run ?expression ?tpm .
-         |}
-         |""".stripMargin
-    select_query(query).map(mp =>
-      ExpressionValue(
-        mp("run"),
-        mp("gene"),
-        mp("tpm").toDouble)
-    )
-  }
+
 }
