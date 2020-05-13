@@ -1,10 +1,11 @@
 package species.sparql
 
 import org.scalatest.wordspec._
-import species.sparql.orthology.{OrthologyManager, OrthologyMode}
+import species.sparql.orthology.{Orthology, OrthologyManager, OrthologyMode}
 
 import scala.collection.immutable._
 import org.scalatest.wordspec._
+import species.sparql.expressions.ExpressionsData.{AllBySpecies, ReferenceGenesInSpecies}
 import species.sparql.expressions.{ExpressionResults, MultiSpeciesExpressions, OrthologExpression, SameSpeciesExpressions, Samples}
 
 class ExpressionsSpec extends AnyWordSpec {
@@ -24,18 +25,18 @@ class ExpressionsSpec extends AnyWordSpec {
     "work well for single species" in {
 
       val igf_ground_expressions = Set(
-        "https://www.ncbi.nlm.nih.gov/sra/SRR1521445"->1.519175,
-        "https://www.ncbi.nlm.nih.gov/sra/SRR3715877"->8.168431,
-        "https://www.ncbi.nlm.nih.gov/sra/SRR5008362"->1.654553,
-        "https://www.ncbi.nlm.nih.gov/sra/SRR5120939"->4.239582,
-        "https://www.ncbi.nlm.nih.gov/sra/SRR5120940"->3.159683)
+        "sra:SRR1521445"->1.519175,
+        "sra:SRR3715877"->8.168431,
+        "sra:SRR5008362"->1.654553,
+        "sra:SRR5120939"->4.239582,
+        "sra:SRR5120940"->3.159683)
 
       val mtor_ground_expressions = Set(
-        "https://www.ncbi.nlm.nih.gov/sra/SRR1521445"->	23.208749,
-        "https://www.ncbi.nlm.nih.gov/sra/SRR3715877"->	26.812367,
-        "https://www.ncbi.nlm.nih.gov/sra/SRR5008362"->	6.182178,
-        "https://www.ncbi.nlm.nih.gov/sra/SRR5120939"->	18.994536,
-        "https://www.ncbi.nlm.nih.gov/sra/SRR5120940"->	15.108637
+        "sra:SRR1521445"->	23.208749,
+        "sra:SRR3715877"->	26.812367,
+        "sra:SRR5008362"->	6.182178,
+        "sra:SRR5120939"->	18.994536,
+        "sra:SRR5120940"->	15.108637
       )
 
       val ground_expressions = igf_ground_expressions ++ mtor_ground_expressions
@@ -62,37 +63,71 @@ class ExpressionsSpec extends AnyWordSpec {
       assert(exps_genes.map(e => e.sample->e.value).toSet == ground_expressions)
 
     }
+    val samples = s.samples_mini_by_runs(Vector(
+      "sra:SRR1521445", //human
+      "sra:SRR3715877", //human
+      "sra:SRR5115668", //mouse
+      "sra:SRR1287653", //panda
+      "sra:SRR1287654" //panda
+    ))
+    val exp = new MultiSpeciesExpressions(samples)
+    implicit val orthologyManager = new OrthologyManager(server)
 
-    "work well with miltiple species" in {
 
-      val samples = s.samples_mini_by_runs(Vector(
-        "sra:SRR1521445", //human
-        "sra:SRR3715877", //human
-        "sra:SRR5115668", //mouse
-        "sra:SRR1287653" //panda
-        ))
-      val exp = new MultiSpeciesExpressions(samples)
-      implicit val orthologyManager = new OrthologyManager(server)
+    "have reference genes expressions done right" in {
       val ref_exp: Seq[OrthologExpression] = exp.reference_expressions(genes)
-      pprint.pprintln(ref_exp)
       assert(ref_exp.size == 2)
       assert(ref_exp.map(o=>exp.localname(o.orthology.reference_gene)).toSet == genes.map(exp.localname(_)).toSet)
-      println("===========")
-      pprint.pprintln(ref_exp)
       val igf1_exp = ref_exp.filter(o=>exp.localname(o.orthology.reference_gene)==exp.localname(igf1)).head
       val ground_igf_exp = Set(
-        "https://www.ncbi.nlm.nih.gov/sra/SRR1521445"->1.519175,
-        "https://www.ncbi.nlm.nih.gov/sra/SRR3715877"->8.168431,
+        "sra:SRR1521445"->1.519175,
+        "sra:SRR3715877"->8.168431,
       )
       assert(igf1_exp.samples.toSet === ground_igf_exp)
-      //val result_one2one: ExpressionResults = exp.expressionsResults(genes, OrthologyMode.one2one)
-      //assert(result_one2one.referenceGenes == genes)
-      //assert(result_one2one.rows.map(_.referenceGene) == genes)
-      //assert(result_one2one.rows.map(_.samplesExpressions))
-      println("?????????????????????")
-      //pprint.pprintln(result_one2one)
-      //assert(result_one2one.referenceGenes == genes)
     }
+    "having orthologs expressions done right" in {
+      //val ortho = exp.orh
+      val orthologs: Vector[Orthology] = orthologyManager.orthologs(genes, OrthologyMode.one2one, exp.species)
+      val results: AllBySpecies = exp.expressions_from_orthologs_by_species_ref(orthologs)
+      assert(results.keySet.size === 3)
+    }
+    "having one2one results done right" in {
+
+      val result_one2one: ExpressionResults = exp.expressionsResults(genes, OrthologyMode.one2one)
+      assert(result_one2one.data.keySet.size ===3)
+      assert(result_one2one.data.contains(":Ailuropoda_melanoleuca"))
+      val Some(panda: ReferenceGenesInSpecies) = result_one2one.data.get(":Ailuropoda_melanoleuca")
+      assert(panda.keySet.size ==1)
+      assert(exp.contains_or_contained(panda.keySet.head, exp.localname(mtor)))
+      val Some((panda_mtor, panda_exp)) = panda.collectFirst{ case (s, value) if exp.contains_or_contained(s,panda.keySet.head) => (s, value) }
+      assert(panda_exp.head.samples.toVector == Vector(
+        "sra:SRR1287653" -> 14.191812,
+        "sra:SRR1287654" -> 6.442644
+      ))
+      val rows = result_one2one.rows
+      assert(rows.map(_.referenceGene) == genes)
+      pprint.pprintln(rows)
+      println("--PANDA_1st_row_one_to_one--")
+      pprint.pprintln(result_one2one.rows.head)
+      println("--PANDA_1st_row_one_to_one_TSV--")
+      println(result_one2one.rows.head.as_tsv_simple_string(withGeneNames = true))
+    }
+
+
+    "having all results done right" in {
+      val result_all: ExpressionResults = exp.expressionsResults(genes, OrthologyMode.all)
+      assert(result_all.data.contains(":Ailuropoda_melanoleuca"))
+      val Some(panda: ReferenceGenesInSpecies) = result_all.data.get(":Ailuropoda_melanoleuca")
+      assert(panda.keySet === Set(mtor,igf1))
+      val rows = result_all.rows
+      assert(rows.map(_.referenceGene) == genes)
+
+      println("--PANDA_1st_row_one_to_one--")
+      pprint.pprintln(result_all.rows.head)
+      println("--PANDA_1st_row_one_to_one_TSV--")
+      println(result_all.rows.head.as_tsv_simple_string(withGeneNames = true))
+    }
+
   }
 
 

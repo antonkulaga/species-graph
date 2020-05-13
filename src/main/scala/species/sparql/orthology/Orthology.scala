@@ -3,16 +3,6 @@ package species.sparql.orthology
 import scala.collection.immutable.ListMap
 
 object Orthology{
-  def apply(mp: ListMap[String, String]): Orthology = {
-    Orthology(
-      mp("reference_gene"),
-      mp("orthology"),
-      mp("ortholog"),
-      mp.getOrElse("ortholog_symbol", ""),
-      mp("species"),
-      mp("confidence")
-    )
-  }
 
   def self_orthology(reference_gene: String, symbol: String, species: String)  =
     Orthology(reference_gene, "ens:ortholog_one2one", reference_gene, symbol, species, "http://rdf.ebi.ac.uk/resource/ensembl/confidence/high" )
@@ -69,5 +59,5 @@ case class OrthologyMode(  one2one: Boolean,
 
 
   lazy val as_values = s"values ?orthology { ${one2oneString} ${one2manyString} ${many2manyString}  } . "
-
+  lazy val with_confidence = confidence.fold("")(s=>s"VALUES ?confidence { <http://rdf.ebi.ac.uk/resource/ensembl/confidence/${s}> } .")
 }

@@ -29,8 +29,8 @@ trait SpeciesExpressions extends QueryBase {
          |""".stripMargin
     select_query(query).map(mp =>
       ExpressionValue(
-        mp("run"),
-        mp("gene"),
+        shorten(mp("run")),
+        shorten(mp("gene")),
         mp("tpm").toDouble)
     )
   }
@@ -59,10 +59,15 @@ class SameSpeciesExpressions(val species: String,
   def ortholog_expressions(orthologs: Vector[Orthology]): Vector[OrthologExpression] = {
     val genes = orthologs.map(_.ortholog)
     val by_gene: Map[String, Vector[ExpressionValue]] = expressionsByGenesUnordered(genes)//.map{ case (g, ee)=> (g, OrthologExpression())}
-    orthologs.collect{case o => OrthologExpression.from(o,by_gene.getOrElse(o.ortholog, Vector.empty[ExpressionValue]))}
+    val result = orthologs.collect{case o => OrthologExpression.from(o,
+      by_gene.getOrElse(ens(o.ortholog), by_gene.getOrElse(o.ortholog, Vector.empty[ExpressionValue]))
+    )}
+    result
   }
 
-  def expressionsByGenesUnordered(genes: Seq[String]): Map[String, Vector[ExpressionValue]] = expressions(genes).groupBy(_.gene)
+  def expressionsByGenesUnordered(genes: Seq[String]): Map[String, Vector[ExpressionValue]] = {
+    expressions(genes).groupBy(_.gene)
+  }
 
 
 }

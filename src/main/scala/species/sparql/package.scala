@@ -18,7 +18,7 @@ package object sparql {
     }
 
     def toMapString: ListMap[String, String] = {
-      ListMap.from(bs.getBindingNames.asScala.map(b=>bs.getBinding(b).toStringTuple))
+      ListMap.from(bs.getBindingNames.asScala.collect{case b if bs.hasBinding(b)=>bs.getBinding(b).toStringTuple})
     }
   }
   implicit class BindingExt(binding: Binding) {

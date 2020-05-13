@@ -22,6 +22,11 @@ case class MultiSpeciesExpressions(samples: Vector[SampleMini], serverURL: Strin
   lazy val expBySpecies: Map[String, SameSpeciesExpressions] =
     samplesBySpecies.map { case (key, values) => key -> SameSpeciesExpressions(values, serverURL) }
 
+  /**
+   * Function to get reference genes expressions
+   * @param referenceGenes
+   * @return
+   */
   def reference_expressions(referenceGenes: Seq[String]): Vector[OrthologExpression] = {
     val query =
       s"""${commonPrefixes}
@@ -31,19 +36,25 @@ case class MultiSpeciesExpressions(samples: Vector[SampleMini], serverURL: Strin
          |    ${values("gene", referenceGenes.map(g=>ens(g)))}
          |    ?species :has_gene ?gene .
          |    ?species rdf:type :Species .
-         |    ?gene rdfs:label ?symbol .
          |    ?run samples:has_organism ?species .
          |    ?expression :expression_of ?gene .
          |    ?run ?expression ?tpm .
+         |    OPTIONAL { ?gene rdfs:label ?symbol } .
          |}
          |""".stripMargin
     val queryResult = select_query(query).map(mp =>
       OrthologExpression(
-        Orthology.self_orthology(mp("gene"),  mp("symbol"), mp("species")),ListMap(mp("run")->mp("tpm").toDouble)
+        Orthology.self_orthology(shorten(mp("gene")),
+          mp.getOrElse("symbol", ""),
+          shorten(mp("species"))),
+        ListMap(shorten(mp("run"))->mp("tpm").toDouble)
       )
     )
     queryResult.groupBy(_.orthology.reference_gene).map{ case (gene, o)=> if(o.size > 1) o.head.merge(o.tail) else o.head }.toVector
+  }
 
+  def reference_expressions_per_species(referenceGenes: Seq[String]): ExpressionsData.ReferenceGenesInSpecies  = {
+    reference_expressions(referenceGenes).groupBy(_.orthology.reference_gene)
   }
 
   /**
@@ -57,7 +68,9 @@ case class MultiSpeciesExpressions(samples: Vector[SampleMini], serverURL: Strin
                         (implicit orthologyManager: OrthologyManager): ExpressionResults = {
 
     val orthologs: Vector[Orthology] = orthologyManager.orthologs(referenceGenes, mode, species)
-    val data: AllBySpecies = expressions_from_orthologs_by_species_ref(orthologs)
+    val ref =  reference_expressions_per_species(referenceGenes)
+    val data_other: AllBySpecies = expressions_from_orthologs_by_species_ref(orthologs)
+    val data = if(ref.nonEmpty) data_other.updated(ref.head._2.head.orthology.species,ref) else data_other
     ExpressionResults(referenceGenes, samples, mode, data)
   }
 
@@ -66,7 +79,7 @@ case class MultiSpeciesExpressions(samples: Vector[SampleMini], serverURL: Strin
     val orthologsBySpecies = orthologs.groupBy(_.species)
     (for {
       (species, exp) <- expBySpecies
-      ortho: Vector[Orthology] = orthologsBySpecies.getOrElse(species, Vector.empty[Orthology])
+      ortho: Vector[Orthology] = orthologsBySpecies.getOrElse(species, orthologsBySpecies.getOrElse(u(species), Vector.empty[Orthology]))
         } yield {
       species -> exp.ortholog_expressions_by_ref(ortho)
     }

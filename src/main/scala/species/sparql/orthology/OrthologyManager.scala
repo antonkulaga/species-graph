@@ -32,20 +32,15 @@ case class OrthologyManager(speciesName: String = "Homo_sapiens",
   def orthologs(referenceGenes: Seq[String],
                     orthologyMode: OrthologyMode,
                     species: Seq[String] = Vector.empty): Vector[Orthology] = {
-    val orthology =
-      s"""
-         |  values ?orthology { ${if(orthologyMode.one2one) "ens:ortholog_one2one" else ""} ${if(orthologyMode.one2many) "ens:ortholog_one2many" else ""} ${if(orthologyMode.many2many) "ens:ortholog_many2many" else ""}  } .
-         |""".stripMargin
-    val conf = orthologyMode.confidence.fold("")(s=>s"values ?confidence { <http://rdf.ebi.ac.uk/resource/ensembl/confidence/${s}> }")
     val query = s"""$commonPrefixes
                    |
                    |SELECT * WHERE
                    |{
                    |    ${values("species", species.map(u))}
                    |    ${values("reference_gene", referenceGenes.map(ens))} #put reference genes selected by the user
-                   |    ${conf}
+                   |    ${orthologyMode.as_values}
+                   |    ${orthologyMode.with_confidence}
                    |    GRAPH ?confidence {
-                   |      ${orthology}
                    |      ?reference_gene ?orthology ?ortholog .
                    |	  }
                    |    ?species :has_gene ?ortholog .
@@ -53,10 +48,16 @@ case class OrthologyManager(speciesName: String = "Homo_sapiens",
                    |    OPTIONAL { ?ortholog rdfs:label ?ortholog_symbol } .
                    |}
       """.stripMargin
-    //println("=============")
-    //println(query)
-    //println("=============")
-    select_query(query).map(f=>Orthology(f))
+    select_query(query).map(mp=>
+      Orthology(
+        shorten(mp("reference_gene")),
+        shorten(mp("orthology")),
+        shorten(mp("ortholog")),
+        mp.getOrElse("ortholog_symbol", ""),
+        shorten(mp("species")),
+        mp("confidence")
+      )
+    )
   }
 
 
@@ -71,7 +72,7 @@ case class OrthologyManager(speciesName: String = "Homo_sapiens",
         "?gene")
     )
       val results =select_query(selectQuery.getQueryString)
-      results.map(v=>v("gene"))
+      results.map(v=>shorten(v("gene")))
   }
 
 

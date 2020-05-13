@@ -30,7 +30,7 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
                    |} ORDER BY DESC(?lifespan)
                    |""".stripMargin
     select_query(query)
-      .map(f=>EnsemblSpecies(f("species"), f("common_name"), f("animal_class"),  f("lifespan"), f("ensembl_url"),  f("taxon")))
+      .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"), f("ensembl_url"),  f("taxon")))
   }
 
   def species_in_samples_by_class(animal_classes: Vector[String]): Vector[EnsemblSpecies] = {
@@ -48,7 +48,7 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
                    |} ORDER BY DESC(?lifespan)
                    |""".stripMargin
     select_query(query)
-      .map(f=>EnsemblSpecies(f("species"), f("common_name"), f("animal_class"),  f("lifespan"), f("ensembl_url"),  f("taxon")))
+      .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"), f("ensembl_url"),  f("taxon")))
   }
 
 }

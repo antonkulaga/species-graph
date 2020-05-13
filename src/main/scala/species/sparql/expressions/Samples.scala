@@ -28,10 +28,10 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
                    |    ?run samples:used_in_project ${u(project)} . #defines the project
                    |    ?run samples:of_tissue ${u(tissue)} . #gets tissue
                    |    ?species :has_lifespan ?lifespan .
-                   |    ?species :has_lifespan ?lifespan .
                    |} ORDER BY ?species ?bioproject ?series ?run
                    |""".stripMargin
-    select_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
+    select_query(query).map(mp => SampleMini(shorten(mp("run")), shorten(mp("species")), shorten(mp("tissue")),
+      Try(mp("lifespan").toDouble).getOrElse(Double.NaN), shorten(mp("animal_class"))))
   }
 
   /**
@@ -54,7 +54,8 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
                    |} ORDER BY ?animal_class ?lifespan ?bioproject ?series ?run
                    |""".stripMargin
     val res = select_query(query)
-    res.map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
+    res.map(mp => SampleMini(
+      shorten(mp("run")), shorten(mp("species")), shorten(mp("tissue")),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), shorten(mp("animal_class"))))
   }
 
   def samples_full(project: String = ":Cross-species"): Vector[ListMap[String, String]] = {
@@ -114,7 +115,12 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
                    |    ?species :has_lifespan ?lifespan .
                    |} ORDER BY ?species ?bioproject ?series ?run
                    |""".stripMargin
-    select_query(query).map(mp => SampleMini(mp("run"), mp("species"), mp("tissue"),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), mp("animal_class")))
+    select_query(query).map(mp => SampleMini(
+      shorten(mp("run")),
+      shorten(mp("species")),
+      shorten(mp("tissue")),
+      Try(mp("lifespan").toDouble).getOrElse(Double.NaN),
+      shorten(mp("animal_class"))))
   }
 
 

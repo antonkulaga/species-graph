@@ -66,6 +66,8 @@ maintainer := "Anton Kulaga <antonkulaga@gmail.com>"
 
 dockerRepository := Some("quay.io/comp-bio-aging")
 
+testOptions in Test += Tests.Argument("-oD")
+
 dockerCommands ++= Seq(
   Cmd("RUN","yum install -y openblas.x86_64 openblas-devel"),
   Cmd("WORKDIR", "/data"),
