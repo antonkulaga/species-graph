@@ -1,4 +1,4 @@
-package species.sparql.expressions
+package species.sparql.samples
 
 import species.sparql.QueryBase
 

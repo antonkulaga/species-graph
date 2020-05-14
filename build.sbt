@@ -44,6 +44,8 @@ libraryDependencies += "com.monovore" %% "decline" % "1.0.0"
 
 libraryDependencies += "com.monovore" %% "decline-enumeratum" % "1.0.0"
 
+libraryDependencies += "org.wvlet.airframe" %% "airframe-log" % "20.5.1"
+
 libraryDependencies += "org.scalatest" %% "scalatest-wordspec" % "3.2.0-M4" % Test
 
 licenses += ("MIT", url("http://opensource.org/licenses/MIT"))

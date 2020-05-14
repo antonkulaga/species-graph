@@ -4,7 +4,8 @@ import species.sparql.orthology.{OrthologyManager, OrthologyMode}
 
 import scala.collection.immutable._
 import org.scalatest.wordspec._
-import species.sparql.expressions.{ExpressionResults, MultiSpeciesExpressions, SameSpeciesExpressions, Samples}
+import species.sparql.expressions.{ExpressionResults, MultiSpeciesExpressions, SameSpeciesExpressions}
+import species.sparql.samples.Samples
 
 class SamplesSpec extends AnyWordSpec  {
   "samples extractor" should {

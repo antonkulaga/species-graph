@@ -8,7 +8,8 @@ import com.monovore.decline.{Command, Opts}
 import cats.implicits._
 import com.monovore.decline._
 import species.sparql.analysis.Statistics
-import species.sparql.orthology.{OrthologyTable, Species}
+import species.sparql.orthology.OrthologyTable
+import species.sparql.samples.Species
 
 import scala.util.{Failure, Success}
 

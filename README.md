@@ -66,4 +66,4 @@ docker run -v /data/species:/data/species quay.io/comp-bio-aging/species-graph e
 KNOWN ISSUES
 ------------
 
-Sometimes GraphDB has misterios heap memory errors which dissapear when you rerun your query
+In very rare cases there might be GraphDB memory and query errors

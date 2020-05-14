@@ -8,7 +8,8 @@ import cats.implicits._
 import com.monovore.decline._
 import _root_.enumeratum.{Enum, EnumEntry}
 import com.monovore.decline.enumeratum._
-import species.sparql.orthology.{EnsemblSpecies, OrthologyManager, OrthologyMode, OrthologyTable, Species}
+import species.sparql.orthology.{OrthologyManager, OrthologyMode, OrthologyTable}
+import species.sparql.samples.{EnsemblSpecies, Species}
 
 sealed trait Confidence extends EnumEntry with EnumEntry.Lowercase
 
@@ -32,38 +33,20 @@ object SplitGenes extends Enum[SplitGenes] {
 }
 
 
-trait OrthologyCommands {
-
-  lazy val animal_classes = Vector(
-    "http://rdf.ebi.ac.uk/resource/ensembl/Mammalia",
-    "http://rdf.ebi.ac.uk/resource/ensembl/Aves",
-    "http://rdf.ebi.ac.uk/resource/ensembl/Reptilia",
-    "http://rdf.ebi.ac.uk/resource/ensembl/Teleostei",
-    "http://rdf.ebi.ac.uk/resource/ensembl/Chondrichthyes",
-    "http://rdf.ebi.ac.uk/resource/ensembl/Coelacanthi",
-  )
+trait OrthologyCommands extends SamplesCommands {
 
   lazy val genes: Opts[String] = Opts.option[String](long = "genes", help = "reference genes: either list of exact genes or the species names to take all genes from (default :Homo_sapiens)").withDefault(":Homo_sapiens")
 
   lazy val orthologyPath: Opts[String] = Opts.option[String](long = "path", help = "Folder to store orthology tables")
 
-  lazy val separator: Opts[String] = Opts.option[String](long = "sep", help = "TSV/CSV separator ( \t by default)").withDefault("\t")
-
   lazy val confidence: Opts[Confidence] = Opts.option[Confidence](long = "confidence", help = "How confident are we in orthologs").withDefault(Confidence.all)
 
 
-  lazy val split: Opts[SplitGenes] = Opts.option[SplitGenes](long = "split", help = "How to split files (nosplit, byclass, byspecies)").withDefault(SplitGenes.NoSplit)
+  lazy val split: Opts[SplitGenes] = Opts.option[SplitGenes](long = "split", help = "How to split files (no_split, by_class, by_species)").withDefault(SplitGenes.NoSplit)
 
-  lazy val server: Opts[String] = Opts.option[String](long = "server", help = "URL of GraphDB server, default = http://10.40.3.21:7200").withDefault("http://10.40.3.21:7200")
+  lazy val slide: Opts[Int] = Opts.option[Int](long = "slide", help = "splits genes into batches of <slide> genes (20000 by default)").withDefault(20000)
 
-  lazy val slide: Opts[Int] = Opts.option[Int](long = "slide", help = "splits genes into batches of <slide> genes (10000 by default)").withDefault(10000)
-
-
-  protected def sep(str: String) = if(str.contains(",")) "," else ";"
-
-  lazy val na: Opts[String] = Opts.option[String](long = "na", help = "What to write when data is not availible (default N/A)").withDefault("N/A")
   lazy val verbose: Opts[Boolean] = Opts.flag(long = "verbose", "Includes additional information for debuging (i.e. gene id-s)").orFalse
-  lazy val rewrite: Opts[Boolean] = Opts.flag(long = "rewrite", "if output folder exists then cleans it before writing").orFalse
 
 
   /**

@@ -6,7 +6,8 @@ import species.sparql.orthology.{Orthology, OrthologyManager, OrthologyMode}
 import scala.collection.immutable._
 import org.scalatest.wordspec._
 import species.sparql.expressions.ExpressionsData.{AllBySpecies, ReferenceGenesInSpecies}
-import species.sparql.expressions.{ExpressionResults, MultiSpeciesExpressions, OrthologExpression, SameSpeciesExpressions, Samples}
+import species.sparql.expressions.{ExpressionResults, MultiSpeciesExpressions, OrthologExpression, SameSpeciesExpressions}
+import species.sparql.samples.Samples
 
 class ExpressionsSpec extends AnyWordSpec {
   protected def cut(str: String) = str.substring(Math.max(str.lastIndexOf("/"),str.lastIndexOf(":"))+1)

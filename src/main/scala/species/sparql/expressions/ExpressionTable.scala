@@ -1,6 +1,7 @@
 package species.sparql.expressions
 import better.files.File
 import species.sparql.orthology.{OrthologyManager, OrthologyMode}
+import species.sparql.samples.SampleMini
 
 import scala.collection.immutable._
 

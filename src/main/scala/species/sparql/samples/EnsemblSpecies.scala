@@ -1,8 +1,9 @@
-package species.sparql.orthology
+package species.sparql.samples
 
 import species.sparql.QueryBase
 
-import scala.collection.immutable.{Map, Vector}
+import scala.collection.immutable.Vector
+
 case class EnsemblSpecies(latin_name: String, common_name: String, animal_class: String, lifespan: String, ensembl_url: String, taxon: String)
 object Species extends Species("http://10.40.3.21:7200/") {
   def apply(serverURL: String) = new Species(serverURL)

@@ -1,6 +1,7 @@
 package species.sparql.orthology
 
 import better.files.File
+import species.sparql.samples.EnsemblSpecies
 
 import scala.collection.compat._
 import scala.collection.immutable._

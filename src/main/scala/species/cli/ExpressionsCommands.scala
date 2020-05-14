@@ -4,9 +4,10 @@ import _root_.enumeratum.{Enum, EnumEntry}
 import com.monovore.decline.enumeratum._
 import cats.implicits._
 import com.monovore.decline._
-import species.sparql.expressions.{ExpressionTable, MultiSpeciesExpressions, SampleMini, Samples}
-import species.sparql.orthology.{EnsemblSpecies, OrthologyManager, OrthologyMode, OrthologyTable, Species}
+import species.sparql.expressions.{ExpressionTable, MultiSpeciesExpressions}
+import species.sparql.orthology.{OrthologyManager, OrthologyMode, OrthologyTable}
 import better.files._
+import species.sparql.samples.{EnsemblSpecies, SampleMini, Samples, Species}
 
 import scala.collection.immutable._
 
@@ -76,10 +77,11 @@ trait ExpressionsCommands  extends OrthologyCommands {
             params.folder.delete()
           }
         }
-        params.folder.createDirectoryIfNotExists()
+        if(split!= SplitExpressions.NoSplit) params.folder.createDirectoryIfNotExists(createParents = true)
         val mode = extract_OrthologyMode(one2ManySettings, confidence)
         split match {
           case SplitExpressions.ByTissue =>
+            println(s"writing expressions in ${params.folder.pathAsString} splited by tissue")
             for {
               (category: String, table) <- expressionTable.splitByTissue()
               output = category.replace("ens:", "").replace(":", "") + ".tsv"
@@ -87,6 +89,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
             table.write_table((params.folder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
           case SplitExpressions.ByClass  =>
+            println(s"writing expressions to ${params.folder.pathAsString} splited by animal class")
             for {
               (category: String, table) <- expressionTable.splitByClass()
               output = category.replace("ens:", "").replace(":", "") + ".tsv"
@@ -94,6 +97,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
               table.write_table((params.folder / category).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
           case SplitExpressions.ByClassAndTissue =>
+            println(s"writing expressions to ${params.folder.pathAsString} with subfolders for each animal class with files per each tissue")
             for {
               (category1, table1) <- expressionTable.splitByClass()
               (category2, table2) <- table1.splitByTissue()
@@ -103,6 +107,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
               table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep,sl = sl)(params.orthologyManager)
 
           case SplitExpressions.ByTissueAndClass=>
+            println(s"writing expressions to ${params.folder.pathAsString} with subfolders for each tissue with files per each animal class")
             for {
               (category1: String, table1) <- expressionTable.splitByTissue()
               (category2: String, table2) <- table1.splitByClass()
@@ -112,6 +117,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
               table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
           case SplitExpressions.NoSplit =>
+            println(s"writing all expressions to one file ${path}")
             expressionTable.write_table(path, mode, withGeneNames = gene_names,na = na, rewrite = rewrite, sep = sep,sl = sl)(params.orthologyManager)
         }
     }
@@ -137,8 +143,8 @@ trait ExpressionsCommands  extends OrthologyCommands {
   protected def initialize_expressions(path: String, gs: String, samples: String, server: String) = {
     implicit val orthologyManager = new OrthologyManager(server)
     val reference_genes = extract_genes(gs)
+    println()
     val s = new Samples(server)
-
     val runs: Vector[SampleMini] = samples match {
       case "all" => s.samples_mini_by_runs()
       case cl if animal_classes.contains(cl) => s.samples_mini_by_runs().filter(s => s.tissue.contains(cl) || cl.contains(s.tissue))
@@ -152,8 +158,5 @@ trait ExpressionsCommands  extends OrthologyCommands {
 /*
 to avoid init boilerplate
  */
-case class ExpressionParameters(  folder: File, referenceGenes: Vector[String],
-                               runs: Vector[SampleMini],
-                               species: Vector[EnsemblSpecies],
-                                  orthologyManager: OrthologyManager
+case class ExpressionParameters(  folder: File, referenceGenes: Vector[String], runs: Vector[SampleMini], species: Vector[EnsemblSpecies], orthologyManager: OrthologyManager
                                )

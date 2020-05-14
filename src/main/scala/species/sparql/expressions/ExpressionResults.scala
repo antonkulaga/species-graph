@@ -2,6 +2,7 @@ package species.sparql.expressions
 
 
 import species.sparql.orthology.{Orthology, OrthologyManager, OrthologyMode}
+import species.sparql.samples.SampleMini
 
 import scala.collection.immutable._
 import scala.collection.compat._

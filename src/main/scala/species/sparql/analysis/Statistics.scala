@@ -1,7 +1,7 @@
 package species.sparql.analysis
 
 import species.sparql.QueryBase
-import species.sparql.orthology.EnsemblSpecies
+import species.sparql.samples.EnsemblSpecies
 
 import scala.util._
 object Statistics extends Statistics("http://10.40.3.21:7200/")
