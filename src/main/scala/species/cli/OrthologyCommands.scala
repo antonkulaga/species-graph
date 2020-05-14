@@ -43,9 +43,7 @@ trait OrthologyCommands {
     "http://rdf.ebi.ac.uk/resource/ensembl/Coelacanthi",
   )
 
-  lazy val genes: Opts[String] = Opts.option[String](long = "genes", help = "reference genes: either list of exact genes or the species names to take all genes from (default Homo_sapiens)").withDefault("Homo_sapiens")
-
-
+  lazy val genes: Opts[String] = Opts.option[String](long = "genes", help = "reference genes: either list of exact genes or the species names to take all genes from (default :Homo_sapiens)").withDefault(":Homo_sapiens")
 
   lazy val orthologyPath: Opts[String] = Opts.option[String](long = "path", help = "Folder to store orthology tables")
 
@@ -58,7 +56,7 @@ trait OrthologyCommands {
 
   lazy val server: Opts[String] = Opts.option[String](long = "server", help = "URL of GraphDB server, default = http://10.40.3.21:7200").withDefault("http://10.40.3.21:7200")
 
-  lazy val slide: Opts[Int] = Opts.option[Int](long = "slide", help = "retrieves genes by batches (of 1000 by default)").withDefault(1000)
+  lazy val slide: Opts[Int] = Opts.option[Int](long = "slide", help = "splits genes into batches of <slide> genes (10000 by default)").withDefault(10000)
 
 
   protected def sep(str: String) = if(str.contains(",")) "," else ";"
@@ -75,7 +73,11 @@ trait OrthologyCommands {
    * @return
    */
   protected def extract_genes(gs: String)(implicit orthologyManager: OrthologyManager): Vector[String] = {
-    if(gs.toLowerCase.contains("homo_sapiens")) orthologyManager.speciesGenes() else {
+    if(gs.startsWith(":") && gs.contains("_")) {
+      val result = orthologyManager.speciesGenes(gs)
+      println(s"using all ${result.size} genes of ${gs}")
+      result
+    } else {
       if(gs.toLowerCase().contains("ens") || gs.contains(";") || gs.contains(",")) {
         gs.split(sep(gs)).map(g=> orthologyManager.ens(g)).toVector
       } else
@@ -84,7 +86,7 @@ trait OrthologyCommands {
 
   }
 
-  def write_orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String,  slide: Int) =
+  def write_orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String, sl: Int) =
     (path, split, server, genes) match {
 
     case (path, SplitGenes.NoSplit, server, gs) =>
@@ -94,7 +96,7 @@ trait OrthologyCommands {
 
       val folder = File(path)
 
-      writeGenes(reference_genes, species, folder, slide)
+      writeGenes(reference_genes, species, folder, sl)
 
     case (path, split, server, gs) if split ==  SplitGenes.ByClass | split == SplitGenes.BySpecies =>
 
@@ -111,7 +113,7 @@ trait OrthologyCommands {
           .replace("http://rdf.ebi.ac.uk/resource/ensembl/", "")
           .replace("<", "").replace(">", "").replace("ens:", "")
       }{
-        writeGenes(reference_genes, sp, folder / cl_name, slide)
+        writeGenes(reference_genes, sp, folder / cl_name, sl)
       }
 
 

@@ -58,14 +58,14 @@ trait ExpressionsCommands  extends OrthologyCommands {
                                       server: String,
                                       sep: String,
                                       rewrite: Boolean,
-                                      slide: Int,
+                                      sl: Int,
                                       confidence: Confidence
                                      ): Unit =
     (path: String, split:SplitExpressions,
       one2ManySettings: One2ManySettings,
-      samples: String, genes: String, verbose, na, server: String, sep, rewrite, slide, confidence) match {
+      samples: String, genes: String, verbose, na, server: String, sep, rewrite, sl, confidence) match {
 
-      case (path, split, one2ManySettings: One2ManySettings, samples, gs, gene_names, na, server, sep, rewrite, slide, confidence)
+      case (path, split, one2ManySettings: One2ManySettings, samples, gs, gene_names, na, server, sep, rewrite, sl, confidence)
       =>
         val params = initialize_expressions(path, gs, samples, server)
         val exp = new MultiSpeciesExpressions(params.runs)
@@ -84,13 +84,14 @@ trait ExpressionsCommands  extends OrthologyCommands {
               (category: String, table) <- expressionTable.splitByTissue()
               output = category.replace("ens:", "").replace(":", "") + ".tsv"
             }
-            table.write_table((params.folder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = slide)(params.orthologyManager)
+            table.write_table((params.folder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
+
           case SplitExpressions.ByClass  =>
             for {
               (category: String, table) <- expressionTable.splitByClass()
               output = category.replace("ens:", "").replace(":", "") + ".tsv"
             }
-              table.write_table((params.folder / category).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = slide)(params.orthologyManager)
+              table.write_table((params.folder / category).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
           case SplitExpressions.ByClassAndTissue =>
             for {
@@ -99,7 +100,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
               subfolder = category1.replace("ens:", "").replace(":", "")
               output = category2.replace("ens:", "").replace(":", "") + ".tsv"
             }
-              table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep,sl = slide)(params.orthologyManager)
+              table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep,sl = sl)(params.orthologyManager)
 
           case SplitExpressions.ByTissueAndClass=>
             for {
@@ -108,10 +109,10 @@ trait ExpressionsCommands  extends OrthologyCommands {
               subfolder = category1.replace("ens:", "").replace(":", "")
               output = category2.replace("ens:", "").replace(":", "") + ".tsv"
             }
-              table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = slide)(params.orthologyManager)
+              table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
           case SplitExpressions.NoSplit =>
-            expressionTable.write_table(path, mode, withGeneNames = gene_names,na = na, rewrite = rewrite, sep = sep,sl = slide)(params.orthologyManager)
+            expressionTable.write_table(path, mode, withGeneNames = gene_names,na = na, rewrite = rewrite, sep = sep,sl = sl)(params.orthologyManager)
         }
     }
 
