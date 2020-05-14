@@ -16,8 +16,8 @@ class ExpressionsSpec extends AnyWordSpec {
     val s = new Samples(server)
 
    // lazy val ground_genes = Set("ens:ENSMUSG00000020053","ens:ENSSSCG00000000857","ens:ENSBTAG00000011082")
-    val igf1 = "ens:ENSG00000017427"
     val mtor = "ens:ENSG00000198793"
+    val igf1 = "ens:ENSG00000017427"
 
     val genes = Vector(mtor, igf1)
 
@@ -106,11 +106,12 @@ class ExpressionsSpec extends AnyWordSpec {
       ))
       val rows = result_one2one.rows
       assert(rows.map(_.referenceGene) == genes)
-      pprint.pprintln(rows)
-      println("--PANDA_1st_row_one_to_one--")
-      pprint.pprintln(result_one2one.rows.head)
-      println("--PANDA_1st_row_one_to_one_TSV--")
-      println(result_one2one.rows.head.as_tsv_simple_string(withGeneNames = true))
+      println("--PANDA_2nd_row_one_to_one_TSV--")
+      assert(result_one2one.rows.head.referenceGene === genes.head)
+      assert(result_one2one.rows.tail.head.referenceGene === genes.tail.head)
+      val second = result_one2one.rows.tail.head
+      println(second.with_tsv_header_simple(withGeneNames = true))
+      println(second.as_tsv_simple_string(withGeneNames = true))
     }
 
 
@@ -119,13 +120,22 @@ class ExpressionsSpec extends AnyWordSpec {
       assert(result_all.data.contains(":Ailuropoda_melanoleuca"))
       val Some(panda: ReferenceGenesInSpecies) = result_all.data.get(":Ailuropoda_melanoleuca")
       assert(panda.keySet === Set(mtor,igf1))
-      val rows = result_all.rows
-      assert(rows.map(_.referenceGene) == genes)
 
-      println("--PANDA_1st_row_one_to_one--")
-      pprint.pprintln(result_all.rows.head)
-      println("--PANDA_1st_row_one_to_one_TSV--")
-      println(result_all.rows.head.as_tsv_simple_string(withGeneNames = true))
+      assert(panda(mtor).size == 1)
+      assert(panda(igf1).size == 2)
+
+      val rows = result_all.rows
+      assert(rows.map(_.referenceGene) === genes)
+      assert(result_all.rows.head.referenceGene === genes.head)
+      assert(result_all.rows.tail.head.referenceGene === genes.tail.head)
+      val second = result_all.rows.tail.head
+
+      println("--PANDA_1st_row_one_to_many--")
+      pprint.pprintln(second)
+      println("--PANDA_1st_row_one_to_many_TSV--")
+      println(second.with_tsv_header_simple(withGeneNames = true))
+      println(second.as_tsv_simple_string(withGeneNames = true))
+      println(second.as_tsv_sum_string(withGeneNames = true))
     }
 
   }

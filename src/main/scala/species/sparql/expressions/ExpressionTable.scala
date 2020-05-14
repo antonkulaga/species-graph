@@ -24,26 +24,35 @@ case class ExpressionTable(referenceGenes: Vector[String], exp: MultiSpeciesExpr
   def take(num: Int): ExpressionTable = copy(referenceGenes = referenceGenes.take(num))
   def split(num: Int): (ExpressionTable, ExpressionTable) = (take(num), skip(num))
 
+
   def write_table(path: String,
                   mode: OrthologyMode,
                   header: Boolean = true,
                   sep: String = "\t",
                   withGeneNames : Boolean = false,
                   na: String = "N/A",
-                  sl: Int = 1000, max_slides: Int = Int.MaxValue,
+                  sl: Int = 1000, max_slides: Int = Int.MaxValue, rewrite: Boolean = false
                                    )(implicit orthologyManager: OrthologyManager) = {
-    val f = File(path).createFileIfNotExists(true)
-    val sls = referenceGenes.sliding(sl, sl)
-    for((slide, i) <- sls.zipWithIndex)
+    val f = File(path)
+    if(rewrite){
+        if(f.exists) {
+          println("output file " + path + " exists, deleting it to write new output")
+          f.delete()
+        }
+
+    }
+    f.createFileIfNotExists(true)
+    val sls = referenceGenes.sliding(sl, sl).zipWithIndex
+    for((slide, i) <- sls)
     {
       val results: ExpressionResults = exp.expressionsResults(slide, mode)(orthologyManager)
       val rows = results.rows
-      if(header && i==0) f.appendLine(rows.head.header(sep, withGeneNames))
+      if(header && i==0) f.appendLine(rows.head.make_tsv_header(sep, withGeneNames))
       for(row <- rows){
 
         f.appendLine(row.as_tsv_simple_string(sep, withGeneNames = withGeneNames))
       }
-      println("WROTE ["+i + " from "+sls.length)
+      println("writing parts ["+i+1 + " from "+sls.length +"]")
 
     }
     println(s"SUCCESSFULLY FINISHED WRITING EXPRESSIONS TO ${f.pathAsString}")

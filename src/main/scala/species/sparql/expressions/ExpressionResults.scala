@@ -14,12 +14,14 @@ import scala.collection.compat._
 case class ExpressionRow(referenceGene: String,
                          samplesExpressions: ListMap[SampleMini, Vector[OrthologExpression]])
 {
-  def header(sep: String = "\t", withGeneNames:Boolean = false) = {
-    "reference_gene" + sep + samplesExpressions.keys.map(s=>if(withGeneNames) "ortholog"+sep + s.run else s.run).mkString(sep)
+
+
+  def make_tsv_header(sep: String = "\t",withGeneNames:Boolean = false): String = {
+    "reference_gene" + sep + samplesExpressions.keys.map(s=>if(withGeneNames) s.species + sep + s.run else s.run).mkString(sep)
   }
 
   def as_tsv_string(sep: String = "\t")(aggregate: Vector[OrthologExpression] => String): String = {
-    referenceGene + samplesExpressions.map{ case (s,v) => aggregate(v)}.mkString(sep)
+    referenceGene + sep + samplesExpressions.map{ case (s,v) => aggregate(v)}.mkString(sep)
   }
 
   /**
@@ -35,14 +37,47 @@ case class ExpressionRow(referenceGene: String,
                            withGeneNames:Boolean = false,
                            na: String = "N/A"): String = {
     as_tsv_string(sep){
+      case cell if cell.isEmpty => if(withGeneNames) na + sep + na else na
+      case cell =>
+        val names = if(withGeneNames) {
+          val ns = cell.map(_.orthology.ortholog).mkString(sep2)
+          if(ns.nonEmpty) ns else na
+        } else ""
+
+        val vals: String = cell.map(v=>v.samples.headOption.map(_._2).getOrElse(na)).mkString(sep2)
+        if(withGeneNames) names + sep + vals else vals
+    }
+  }
+
+  def as_tsv_sum_string(sep: String = "\t",
+                           sep2: String = ";",
+                           withGeneNames:Boolean = false,
+                           na: String = "N/A"): String = {
+    as_tsv_string(sep){
+      case cell if cell.isEmpty => if(withGeneNames) na + sep + na else na
+      case cell =>
+        val names = if(withGeneNames) {
+          val ns = cell.map(_.orthology.ortholog).mkString(sep2)
+          if(ns.nonEmpty) ns + sep else na + sep
+        } else ""
+        val vals= cell.map(v=>v.samples.headOption.map(_._2).getOrElse(0.0)).sum
+        names + vals.toString
+    }
+  }
+
+  def as_tsv_avg_string(sep: String = "\t",
+                        sep2: String = ";",
+                        withGeneNames:Boolean = false,
+                        na: String = "N/A"): String = {
+    as_tsv_string(sep){
       case values if values.isEmpty => if(withGeneNames) na + sep + na + sep else na + sep
       case values =>
         val names = if(withGeneNames) {
           val ns = values.map(_.orthology.ortholog).mkString(sep2)
           if(ns.nonEmpty) ns + sep else na + sep
         } else ""
-        val vals: String = values.map(v=>v.samples.headOption.map(_._2).getOrElse(na)).mkString(sep2)
-        names + vals + sep
+        val vals= values.map(v=>v.samples.headOption.map(_._2).getOrElse(0.0)).sum / values.length.toDouble
+        names + vals.toString
     }
   }
 }

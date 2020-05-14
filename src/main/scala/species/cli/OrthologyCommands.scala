@@ -32,12 +32,15 @@ trait OrthologyCommands {
     "http://rdf.ebi.ac.uk/resource/ensembl/Coelacanthi",
   )
 
-  lazy val genes: Opts[String] = Opts.option[String](long = "genes", help = "genes: either species_name or exact list (default Homo_sapiens)").withDefault("Homo_sapiens")
+  lazy val genes: Opts[String] = Opts.option[String](long = "genes", help = "reference genes: either list of exact genes or the species names to take all genes from (default Homo_sapiens)").withDefault("Homo_sapiens")
 
 
 
   lazy val orthologyPath: Opts[String] = Opts.option[String](long = "path", help = "Folder to store orthology tables")
-    //.withDefault("/data/species/by_class_and_lifespan")
+
+  lazy val separator: Opts[String] = Opts.option[String](long = "sep", help = "TSV/CSV separator ( \t by default)").withDefault("\t")
+
+  //.withDefault("/data/species/by_class_and_lifespan")
 
   //lazy val classes: Opts[String] = Opts.option[String](long = "classes", help = "Animal classes").withDefault("all")
 
@@ -45,12 +48,27 @@ trait OrthologyCommands {
 
   lazy val server: Opts[String] = Opts.option[String](long = "server", help = "URL of GraphDB server, default = http://10.40.3.21:7200").withDefault("http://10.40.3.21:7200")
 
+  lazy val slide: Opts[Int] = Opts.option[Int](long = "slide", help = "retrieves genes by batches (of 2000 by default)").withDefault(2000)
 
+
+  protected def sep(str: String) = if(str.contains(",")) "," else ";"
+
+  lazy val na: Opts[String] = Opts.option[String](long = "na", help = "What to write when data is not availible (default N/A)").withDefault("N/A")
+  lazy val verbose: Opts[Boolean] = Opts.flag(long = "verbose", "Includes additional information for debuging (i.e. gene id-s)").orFalse
+  lazy val rewrite: Opts[Boolean] = Opts.flag(long = "rewrite", "if output folder exists then cleans it before writing").orFalse
+
+
+  /**
+   * Extracts genes from command line parameters
+   * @param gs
+   * @param orthologyManager
+   * @return
+   */
   protected def extract_genes(gs: String)(implicit orthologyManager: OrthologyManager): Vector[String] = {
     if(gs.toLowerCase.contains("homo_sapiens")) orthologyManager.speciesGenes() else {
-      if(gs.contains(":") || gs.contains(";"))
-        gs.split(";").map(g=> orthologyManager.ens(g)).toVector
-      else
+      if(gs.toLowerCase().contains("ens") || gs.contains(";") || gs.contains(",")) {
+        gs.split(sep(gs)).map(g=> orthologyManager.ens(g)).toVector
+      } else
         orthologyManager.speciesGenes((":"+gs).replace("::", ":"))
     }
 

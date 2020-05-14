@@ -10,12 +10,13 @@ import better.files._
 
 import scala.collection.immutable._
 
-sealed trait SplitExpressions extends EnumEntry with EnumEntry.Lowercase
+sealed trait SplitExpressions extends EnumEntry with EnumEntry.Snakecase
 
 object SplitExpressions extends Enum[SplitExpressions] {
   case object NoSplit extends SplitExpressions
   case object ByClass extends SplitExpressions
   case object ByClassAndTissue extends SplitExpressions
+  case object ByTissueAndClass extends SplitExpressions
   case object ByTissue extends SplitExpressions
 
   val values = findValues
@@ -30,27 +31,6 @@ object One2ManySettings extends Enum[One2ManySettings]{
 
   val values = findValues
 }
-/*
-sealed trait OrthologySettings extends EnumEntry with EnumEntry.Lowercase
-object OrthologySettings extends Enum[OrthologySettings]
-{
-
-  case object  all extends OrthologySettings// = OrthologyMode(true, true, true, None)
-  case object  all_high extends OrthologySettings // = OrthologyMode(true, true, true, Some("high"))
-  case object  default extends OrthologySettings // = OrthologyMode(true, true, false, None)
-  case object  one2one extends OrthologySettings // = OrthologyMode(true, false, false, None)
-  case object  one2one_high extends OrthologySettings // = OrthologyMode(true, false, false, Some("high"))
-  case object  one2many extends OrthologySettings // = OrthologyMode(false, true, false, None)
-  case object  one2many_high extends OrthologySettings // = OrthologyMode(false, true, false, Some("high"))
-  case object  one2many_directed extends OrthologySettings // = OrthologyMode(false, true, false, None, true)
-  case object  one2many_high_directed extends OrthologySettings // = OrthologyMode(false, true, false, Some("high"), true)
-
-  case object  many2many extends OrthologySettings // = OrthologyMode(false, false, true, None)
-  case object  many2many_high extends OrthologySettings // = OrthologyMode(false, false, true, Some("high"))
-
-  val values = findValues
-}
-*/
 
 trait ExpressionsCommands  extends OrthologyCommands {
 
@@ -63,50 +43,93 @@ trait ExpressionsCommands  extends OrthologyCommands {
   lazy val expressionsPath: Opts[String] = Opts.option[String](long = "path", help = "Folder to store orthology tables")
   lazy val splitExpressions: Opts[SplitExpressions] = Opts.option[SplitExpressions](long = "split",
     help = "How to split expressions (nosplit, byclass, byclassandtissu, bytissue)").withDefault(SplitExpressions.NoSplit)
-  lazy val one_2_many_settings: Opts[One2ManySettings] = Opts.option[One2ManySettings](long = "one_2_many_settings",
+  lazy val one_2_many_settings: Opts[One2ManySettings] = Opts.option[One2ManySettings](long = "one2many",
     help = "How to handler one_2_many genes (process one2one only by default").withDefault(One2ManySettings.one2one_only)
 
 
   def write_expression_implementation(path: String, split:SplitExpressions,
                                       one2ManySettings: One2ManySettings,
-                                      samples: String, genes: String,  server: String): Unit =
+                                      samples: String,
+                                      genes: String,
+                                      verbose: Boolean,
+                                      na: String,
+                                      server: String,
+                                      sep: String,
+                                      rewrite: Boolean,
+                                      slide: Int
+                                     ): Unit =
     (path: String, split:SplitExpressions,
       one2ManySettings: One2ManySettings,
-      samples: String, genes: String,  server: String) match {
+      samples: String, genes: String, verbose, na, server: String, sep, rewrite, slide) match {
 
-      case (path, SplitExpressions.NoSplit, one2ManySettings: One2ManySettings, samples, gs,  server) =>
+      case (path, split, one2ManySettings: One2ManySettings, samples, gs, gene_names, na, server, sep, rewrite, slide)
+      =>
         val params = initialize_expressions(path, gs, samples, server)
         val exp = new MultiSpeciesExpressions(params.runs)
         val expressionTable: ExpressionTable = new ExpressionTable(params.referenceGenes, exp)
-        //val expressions = exp.get_expressions_in_samples(runs)
-        val mode = extract_OrthologyMode(one2ManySettings)
-        expressionTable.write_table(path, mode)(params.orthologyManager)
-
-
-      case (path, SplitExpressions.ByClass, one2ManySettings: One2ManySettings, samples, gs,  server) =>
-        val params = initialize_expressions(path, gs, samples, server)
-        val exp = new MultiSpeciesExpressions(params.runs)
-        val expressionTable: ExpressionTable = new ExpressionTable(params.referenceGenes, exp)
+        if(rewrite){
+          if(params.folder.exists) {
+            println("output folder " + params.folder.pathAsString + " exists, deleting it")
+            params.folder.delete()
+          }
+        }
         params.folder.createDirectoryIfNotExists()
         val mode = extract_OrthologyMode(one2ManySettings)
-        for{
-          (animal_class: String, table) <- expressionTable.splitByClass()
+        split match {
+          case SplitExpressions.ByTissue =>
+            for {
+              (category: String, table) <- expressionTable.splitByTissue()
+              output = category.replace("ens:", "").replace(":", "") + ".tsv"
+            }
+            table.write_table((params.folder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = slide)(params.orthologyManager)
+          case SplitExpressions.ByClass  =>
+            for {
+              (category: String, table) <- expressionTable.splitByClass()
+              output = category.replace("ens:", "").replace(":", "") + ".tsv"
+            }
+              table.write_table((params.folder / category).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = slide)(params.orthologyManager)
+
+          case SplitExpressions.ByClassAndTissue =>
+            for {
+              (category1, table1) <- expressionTable.splitByClass()
+              (category2, table2) <- table1.splitByTissue()
+              subfolder = category1.replace("ens:", "").replace(":", "")
+              output = category2.replace("ens:", "").replace(":", "") + ".tsv"
+            }
+              table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep,sl = slide)(params.orthologyManager)
+
+          case SplitExpressions.ByTissueAndClass=>
+            for {
+              (category1: String, table1) <- expressionTable.splitByTissue()
+              (category2: String, table2) <- table1.splitByClass()
+              subfolder = category1.replace("ens:", "").replace(":", "")
+              output = category2.replace("ens:", "").replace(":", "") + ".tsv"
+            }
+              table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = slide)(params.orthologyManager)
+
+          case SplitExpressions.NoSplit =>
+            expressionTable.write_table(path, mode, withGeneNames = gene_names,na = na, rewrite = rewrite, sep = sep,sl = slide)(params.orthologyManager)
         }
-        {
-          table.write_table((params.folder / animal_class).pathAsString, mode)(params.orthologyManager)
-        }
-      case _ => println("OTHER")
-  }
+    }
 
 
   lazy val expressions: Command[Unit] = Command(
     name = "expressions", header = "Generate expression tables"
   ) {
 
-    (expressionsPath, splitExpressions, one_2_many_settings, samples, genes, server).mapN {
+    (expressionsPath, splitExpressions, one_2_many_settings, samples, genes, verbose, na, server, separator, rewrite, slide).mapN {
       write_expression_implementation
     }
   }
+
+  /**
+   * Functions that initialize gene expression parameters
+   * @param path
+   * @param gs
+   * @param samples
+   * @param server
+   * @return
+   */
   protected def initialize_expressions(path: String, gs: String, samples: String, server: String) = {
     implicit val orthologyManager = new OrthologyManager(server)
     val reference_genes = extract_genes(gs)
@@ -115,7 +138,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
     val runs: Vector[SampleMini] = samples match {
       case "all" => s.samples_mini_by_runs()
       case cl if animal_classes.contains(cl) => s.samples_mini_by_runs().filter(s => s.tissue.contains(cl) || cl.contains(s.tissue))
-      case other => s.samples_mini_by_runs(other.split(";").toVector)
+      case other => s.samples_mini_by_runs(other.split(";").map(s.sra).toVector)
     }
     val species: Vector[EnsemblSpecies] = new Species(server).species_in_samples(runs.map(_.run))
     val folder = File(path)
