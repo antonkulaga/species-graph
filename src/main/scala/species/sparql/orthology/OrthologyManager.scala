@@ -64,15 +64,15 @@ case class OrthologyManager(speciesName: String = "Homo_sapiens",
   def speciesGenes(species: String = "http://aging-research.group/resource/Homo_sapiens"): Vector[String] = {
     import RDF._
       val gene = variable("gene")
-    val sp = if(species.contains(":")) species else s"http://aging-research.group/resource/${species}"
-      val selectQuery: SelectQuery = Queries.SELECT(gene)
-      .where(triple(
-        sp,
-        "http://aging-research.group/resource/has_gene",
-        "?gene")
-    )
-      val results =select_query(selectQuery.getQueryString)
-      results.map(v=>shorten(v("gene")))
+      val sp = if(species.contains(":")) species else s"http://aging-research.group/resource/${species}"
+    val query =
+      s"""
+        |$commonPrefixes
+        |SELECT ?gene
+        |WHERE { ${u(species)} :has_gene ?gene . }
+        |""".stripMargin
+    val results: Seq[ListMap[String, String]] = select_query(query)
+    results.map(mp=>shorten(mp("gene"))).toVector
   }
 
 

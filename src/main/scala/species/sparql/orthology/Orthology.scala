@@ -33,6 +33,7 @@ object OrthologyMode{
   lazy val all = OrthologyMode(true, true, true, None)
   lazy val all_high = OrthologyMode(true, true, true, Some("high"))
   lazy val default = OrthologyMode(true, true, false, None)
+  lazy val default_high = OrthologyMode(true, true, false, Some("high"))
   lazy val one2one = OrthologyMode(true, false, false, None)
   lazy val one2one_high = OrthologyMode(true, false, false, Some("high"))
   lazy val one2many = OrthologyMode(false, true, false, None)

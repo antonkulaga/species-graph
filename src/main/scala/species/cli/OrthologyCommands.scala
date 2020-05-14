@@ -10,6 +10,17 @@ import _root_.enumeratum.{Enum, EnumEntry}
 import com.monovore.decline.enumeratum._
 import species.sparql.orthology.{EnsemblSpecies, OrthologyManager, OrthologyMode, OrthologyTable, Species}
 
+sealed trait Confidence extends EnumEntry with EnumEntry.Lowercase
+
+object Confidence extends Enum[Confidence] {
+  case object high extends Confidence
+  case object low extends Confidence
+  case object all extends Confidence
+
+  val values = findValues
+}
+
+
 sealed trait SplitGenes extends EnumEntry with EnumEntry.Lowercase
 
 object SplitGenes extends Enum[SplitGenes] {
@@ -40,15 +51,14 @@ trait OrthologyCommands {
 
   lazy val separator: Opts[String] = Opts.option[String](long = "sep", help = "TSV/CSV separator ( \t by default)").withDefault("\t")
 
-  //.withDefault("/data/species/by_class_and_lifespan")
+  lazy val confidence: Opts[Confidence] = Opts.option[Confidence](long = "confidence", help = "How confident are we in orthologs").withDefault(Confidence.all)
 
-  //lazy val classes: Opts[String] = Opts.option[String](long = "classes", help = "Animal classes").withDefault("all")
 
   lazy val split: Opts[SplitGenes] = Opts.option[SplitGenes](long = "split", help = "How to split files (nosplit, byclass, byspecies)").withDefault(SplitGenes.NoSplit)
 
   lazy val server: Opts[String] = Opts.option[String](long = "server", help = "URL of GraphDB server, default = http://10.40.3.21:7200").withDefault("http://10.40.3.21:7200")
 
-  lazy val slide: Opts[Int] = Opts.option[Int](long = "slide", help = "retrieves genes by batches (of 2000 by default)").withDefault(2000)
+  lazy val slide: Opts[Int] = Opts.option[Int](long = "slide", help = "retrieves genes by batches (of 1000 by default)").withDefault(1000)
 
 
   protected def sep(str: String) = if(str.contains(",")) "," else ";"
@@ -74,7 +84,8 @@ trait OrthologyCommands {
 
   }
 
-  def write_orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String) = (path, split, server, genes) match {
+  def write_orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String,  slide: Int) =
+    (path, split, server, genes) match {
 
     case (path, SplitGenes.NoSplit, server, gs) =>
       val species: Vector[EnsemblSpecies] = new Species(server).species_in_samples()
@@ -83,48 +94,50 @@ trait OrthologyCommands {
 
       val folder = File(path)
 
-      writeGenes(reference_genes, species, folder)
+      writeGenes(reference_genes, species, folder, slide)
 
-    case (path, SplitGenes.ByClass, server, gs) =>
+    case (path, split, server, gs) if split ==  SplitGenes.ByClass | split == SplitGenes.BySpecies =>
 
       val folder = File(path)
       implicit val orthologyManager = new OrthologyManager(server)
       val reference_genes = extract_genes(gs)
-      val speciesGrouped= new Species(server).species_in_samples().groupBy(_.animal_class)
+      val speciesGrouped= new Species(server).species_in_samples().groupBy(s=> split match {
+        case SplitGenes.ByClass => s.animal_class.replace("ens:", "").replace(":", "")
+        case SplitGenes.BySpecies => s.latin_name.replace("ens:", "").replace(":", "")
+      })
       for{
         (cl, sp) <- speciesGrouped
         cl_name = cl
           .replace("http://rdf.ebi.ac.uk/resource/ensembl/", "")
           .replace("<", "").replace(">", "").replace("ens:", "")
       }{
-        writeGenes(reference_genes, sp, folder / cl_name)
+        writeGenes(reference_genes, sp, folder / cl_name, slide)
       }
 
-    case (path, SplitGenes.BySpecies, server, gs) =>
-      println("Split by species not implemented yet")
+
   }
 
   lazy val orthologs: Command[Unit] = Command(
     name = "orthologs", header = "Generate orthology tables"
   ) {
-    (orthologyPath, split, server, genes).mapN(write_orthologs_implementation)
+    (orthologyPath, split, server, genes, slide).mapN(write_orthologs_implementation)
   }
 
 
 
-  def writeGenes(genes: Vector[String], species: Vector[EnsemblSpecies], folder: File): Unit = {
+  def writeGenes(genes: Vector[String], species: Vector[EnsemblSpecies], folder: File, slide: Int): Unit = {
     println(s"writing orthology table for ${folder.pathAsString}")
     folder.createDirectoryIfNotExists()
     val orthologyTable = new OrthologyTable(species)
-    orthologyTable.writeOrthology(genes,  OrthologyMode.one2one, (folder / "one2one.tsv").pathAsString)
+    orthologyTable.writeOrthology(genes,  OrthologyMode.one2one, (folder / "one2one.tsv").pathAsString, sl = slide)
     println("ONE2ONE finished")
-    orthologyTable.writeOrthology(genes,  OrthologyMode.one2many , (folder / "one2many.tsv").pathAsString)
+    orthologyTable.writeOrthology(genes,  OrthologyMode.one2many , (folder / "one2many.tsv").pathAsString, sl = slide)
     println("ONE2MANY finished")
-    orthologyTable.writeOrthology(genes,  OrthologyMode.one2many_directed , (folder / "one2many_directed.tsv").pathAsString)
+    orthologyTable.writeOrthology(genes,  OrthologyMode.one2many_directed , (folder / "one2many_directed.tsv").pathAsString, sl = slide)
     println("ONE2MANY directed finished")
-    orthologyTable.writeOrthology(genes,  OrthologyMode.many2many,  (folder / "many2many.tsv").pathAsString)
+    orthologyTable.writeOrthology(genes,  OrthologyMode.many2many,  (folder / "many2many.tsv").pathAsString, sl = slide)
     println("MANY2MANY finished")
-    orthologyTable.writeOrthology(genes,  OrthologyMode.all , (folder / "all.tsv").pathAsString)
+    orthologyTable.writeOrthology(genes,  OrthologyMode.all , (folder / "all.tsv").pathAsString, sl = slide)
     println("ALL finished")
     println(s"writing orthology table for ${folder.pathAsString} FINISHED")
     println("-----------------------")

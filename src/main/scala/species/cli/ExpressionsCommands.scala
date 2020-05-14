@@ -34,9 +34,11 @@ object One2ManySettings extends Enum[One2ManySettings]{
 
 trait ExpressionsCommands  extends OrthologyCommands {
 
-  protected def extract_OrthologyMode(setting: One2ManySettings) = setting match {
-    case One2ManySettings.one2one_only => OrthologyMode.one2one
-    case other => OrthologyMode.default
+  protected def extract_OrthologyMode(setting: One2ManySettings, confidence: Confidence) = (setting, confidence) match {
+    case (One2ManySettings.one2one_only, Confidence.high) => OrthologyMode.one2one_high
+    case (One2ManySettings.one2one_only, confidence) => OrthologyMode.one2one
+    case (other, Confidence.high) => OrthologyMode.default_high
+    case (other, conf) => OrthologyMode.default
   }
 
   lazy val samples: Opts[String] = Opts.option[String](long = "samples", help = "samples (all by default))").withDefault("all")
@@ -56,13 +58,14 @@ trait ExpressionsCommands  extends OrthologyCommands {
                                       server: String,
                                       sep: String,
                                       rewrite: Boolean,
-                                      slide: Int
+                                      slide: Int,
+                                      confidence: Confidence
                                      ): Unit =
     (path: String, split:SplitExpressions,
       one2ManySettings: One2ManySettings,
-      samples: String, genes: String, verbose, na, server: String, sep, rewrite, slide) match {
+      samples: String, genes: String, verbose, na, server: String, sep, rewrite, slide, confidence) match {
 
-      case (path, split, one2ManySettings: One2ManySettings, samples, gs, gene_names, na, server, sep, rewrite, slide)
+      case (path, split, one2ManySettings: One2ManySettings, samples, gs, gene_names, na, server, sep, rewrite, slide, confidence)
       =>
         val params = initialize_expressions(path, gs, samples, server)
         val exp = new MultiSpeciesExpressions(params.runs)
@@ -74,7 +77,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
           }
         }
         params.folder.createDirectoryIfNotExists()
-        val mode = extract_OrthologyMode(one2ManySettings)
+        val mode = extract_OrthologyMode(one2ManySettings, confidence)
         split match {
           case SplitExpressions.ByTissue =>
             for {
@@ -117,7 +120,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
     name = "expressions", header = "Generate expression tables"
   ) {
 
-    (expressionsPath, splitExpressions, one_2_many_settings, samples, genes, verbose, na, server, separator, rewrite, slide).mapN {
+    (expressionsPath, splitExpressions, one_2_many_settings, samples, genes, verbose, na, server, separator, rewrite, slide, confidence).mapN {
       write_expression_implementation
     }
   }
