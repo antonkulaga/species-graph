@@ -46,7 +46,7 @@ trait OrthologyCommands extends SamplesCommands {
 
   lazy val split: Opts[SplitGenes] = Opts.option[SplitGenes](long = "split", help = "How to split files (no_split, by_class, by_species)").withDefault(SplitGenes.NoSplit)
 
-  lazy val slide: Opts[Int] = Opts.option[Int](long = "slide", help = "splits genes into batches of <slide> genes (20000 by default)").withDefault(20000)
+  lazy val slide: Opts[Int] = Opts.option[Int](long = "slide", help = "splits genes into batches of <slide> genes (25000 by default)").withDefault(25000)
 
   lazy val verbose: Opts[Boolean] = Opts.flag(long = "verbose", "Includes additional information for debuging (i.e. gene id-s)").orFalse
 
@@ -60,7 +60,7 @@ trait OrthologyCommands extends SamplesCommands {
   protected def extract_genes(gs: String)(implicit orthologyManager: OrthologyManager): Vector[String] = {
     if(gs.startsWith(":") && gs.contains("_")) {
       val result = orthologyManager.speciesGenes(gs)
-      println(s"using all ${result.size} genes of ${gs}")
+      info(s"using all ${result.size} genes of ${gs}")
       result
     } else {
       if(gs.toLowerCase().contains("ens") || gs.contains(";") || gs.contains(",")) {
@@ -113,20 +113,20 @@ trait OrthologyCommands extends SamplesCommands {
 
 
   def writeGenes(genes: Vector[String], species: Vector[EnsemblSpecies], folder: File, slide: Int): Unit = {
-    println(s"writing orthology table for ${folder.pathAsString}")
+    info(s"writing orthology table for ${folder.pathAsString}")
     folder.createDirectoryIfNotExists()
     val orthologyTable = new OrthologyTable(species)
     orthologyTable.writeOrthology(genes,  OrthologyMode.one2one, (folder / "one2one.tsv").pathAsString, sl = slide)
-    println("ONE2ONE finished")
+    info("ONE2ONE finished")
     orthologyTable.writeOrthology(genes,  OrthologyMode.one2many , (folder / "one2many.tsv").pathAsString, sl = slide)
-    println("ONE2MANY finished")
+    info("ONE2MANY finished")
     orthologyTable.writeOrthology(genes,  OrthologyMode.one2many_directed , (folder / "one2many_directed.tsv").pathAsString, sl = slide)
-    println("ONE2MANY directed finished")
+    info("ONE2MANY directed finished")
     orthologyTable.writeOrthology(genes,  OrthologyMode.many2many,  (folder / "many2many.tsv").pathAsString, sl = slide)
-    println("MANY2MANY finished")
+    info("MANY2MANY finished")
     orthologyTable.writeOrthology(genes,  OrthologyMode.all , (folder / "all.tsv").pathAsString, sl = slide)
-    println("ALL finished")
-    println(s"writing orthology table for ${folder.pathAsString} FINISHED")
-    println("-----------------------")
+    info("ALL finished")
+    info(s"writing orthology table for ${folder.pathAsString} FINISHED")
+    info("-----------------------")
   }
 }

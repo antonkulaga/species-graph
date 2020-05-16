@@ -17,7 +17,6 @@ trait SamplesCommands extends LogSupport{
     val start = System.nanoTime()
     val result = block    // call-by-name
     val end = System.nanoTime()
-    info("Elapsed time: " + (end - start) * 1e+9 + "ns")
     val difference = end - start
     info("Total execution time: " +
       TimeUnit.NANOSECONDS.toHours(difference) + " hours " +

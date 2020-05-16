@@ -74,7 +74,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
         val expressionTable: ExpressionTable = new ExpressionTable(params.referenceGenes, exp)
         if (rewrite) {
           if (params.folder.exists) {
-            println("output folder " + params.folder.pathAsString + " exists, deleting it")
+            warn("output folder " + params.folder.pathAsString + " exists, deleting it")
             params.folder.delete()
           }
         }
@@ -82,7 +82,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
         val mode = extract_OrthologyMode(one2ManySettings, confidence)
         split match {
           case SplitExpressions.ByTissue =>
-            println(s"writing expressions in ${params.folder.pathAsString} splited by tissue")
+            info(s"writing expressions in ${params.folder.pathAsString} splited by tissue")
             for {
               (category: String, table) <- expressionTable.splitByTissue()
               output = category.replace("ens:", "").replace(":", "") + ".tsv"
@@ -90,7 +90,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
               table.write_table((params.folder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
           case SplitExpressions.ByClass =>
-            println(s"writing expressions to ${params.folder.pathAsString} splited by animal class")
+            info(s"writing expressions to ${params.folder.pathAsString} splited by animal class")
             for {
               (category: String, table) <- expressionTable.splitByClass()
               output = category.replace("ens:", "").replace(":", "") + ".tsv"
@@ -98,7 +98,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
               table.write_table((params.folder / category).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
           case SplitExpressions.ByClassAndTissue =>
-            println(s"writing expressions to ${params.folder.pathAsString} with subfolders for each animal class with files per each tissue")
+            info(s"writing expressions to ${params.folder.pathAsString} with subfolders for each animal class with files per each tissue")
             for {
               (category1, table1) <- expressionTable.splitByClass()
               (category2, table2) <- table1.splitByTissue()
@@ -108,7 +108,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
               table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
           case SplitExpressions.ByTissueAndClass =>
-            println(s"writing expressions to ${params.folder.pathAsString} with subfolders for each tissue with files per each animal class")
+            info(s"writing expressions to ${params.folder.pathAsString} with subfolders for each tissue with files per each animal class")
             for {
               (category1: String, table1) <- expressionTable.splitByTissue()
               (category2: String, table2) <- table1.splitByClass()
@@ -118,7 +118,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
               table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
           case SplitExpressions.NoSplit =>
-            println(s"writing all expressions to one file ${path}")
+            info(s"writing all expressions to one file ${path}")
             expressionTable.write_table(path, mode, withGeneNames = gene_names, na = na, rewrite = rewrite, sep = sep, sl = sl)(params.orthologyManager)
         }
       }
@@ -145,7 +145,6 @@ trait ExpressionsCommands  extends OrthologyCommands {
   protected def initialize_expressions(path: String, gs: String, samples: String, server: String) = {
     implicit val orthologyManager = new OrthologyManager(server)
     val reference_genes = extract_genes(gs)
-    println()
     val s = new Samples(server)
     val runs: Vector[SampleMini] = samples match {
       case "all" => s.samples_mini_by_runs()
