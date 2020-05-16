@@ -10,6 +10,11 @@ import scala.collection.compat._
 package object sparql {
   implicit class QueryIterable(it: TupleQueryResult) extends Iterable[BindingSet]{
     override def iterator: Iterator[BindingSet] = it.iterator().asScala
+
+    lazy val bindingNames: Vector[String] = it.getBindingNames().asScala.toVector
+
+    def orderedResults(na: String = "N/A"): Vector[ListMap[String, String]] = this.toVector.map { bs=> bs.extract(bindingNames, na)}
+
   }
 
   implicit class BindingSetExt(bs: BindingSet) {
@@ -19,6 +24,10 @@ package object sparql {
 
     def toMapString: ListMap[String, String] = {
       ListMap.from(bs.getBindingNames.asScala.collect{case b if bs.hasBinding(b)=>bs.getBinding(b).toStringTuple})
+    }
+
+    def extract(seq: Seq[String], na: String): ListMap[String, String] = {
+      ListMap.from(for(s <- seq) yield if(bs.hasBinding(s)) bs.getBinding(s).toStringTuple else s->na)
     }
   }
   implicit class BindingExt(binding: Binding) {

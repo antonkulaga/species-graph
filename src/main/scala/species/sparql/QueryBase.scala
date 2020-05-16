@@ -33,6 +33,24 @@ trait QueryBase extends Prefixes {
     }
   }
 
+  /**
+   * Select query that preserves order of the variables
+   * @param query
+   * @param na
+   * @return
+   */
+  def select_query_ordered(query: String, na: String = "N/A"): Vector[ListMap[String, String]] = withConnection{ con =>
+    Try{
+      con.prepareTupleQuery(query).evaluate().orderedResults(na)
+    } match {
+      case Success(value) => value
+      case Failure(e) =>
+        println("FAILED SELECT QUERY:")
+        println(query)
+        throw e
+    }
+  }
+
   def update_and_check_query(update: String, query: String): Try[Vector[ListMap[String, String]]] = Try{
     insert_query(update)
     select_query(query)

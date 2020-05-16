@@ -61,7 +61,8 @@ trait ExpressionsCommands  extends OrthologyCommands {
                                       rewrite: Boolean,
                                       sl: Int,
                                       confidence: Confidence
-                                     ): Unit =
+                                     ): Unit = time {
+
     (path: String, split:SplitExpressions,
       one2ManySettings: One2ManySettings,
       samples: String, genes: String, verbose, na, server: String, sep, rewrite, sl, confidence) match {
@@ -71,13 +72,13 @@ trait ExpressionsCommands  extends OrthologyCommands {
         val params = initialize_expressions(path, gs, samples, server)
         val exp = new MultiSpeciesExpressions(params.runs)
         val expressionTable: ExpressionTable = new ExpressionTable(params.referenceGenes, exp)
-        if(rewrite){
-          if(params.folder.exists) {
+        if (rewrite) {
+          if (params.folder.exists) {
             println("output folder " + params.folder.pathAsString + " exists, deleting it")
             params.folder.delete()
           }
         }
-        if(split!= SplitExpressions.NoSplit) params.folder.createDirectoryIfNotExists(createParents = true)
+        if (split != SplitExpressions.NoSplit) params.folder.createDirectoryIfNotExists(createParents = true)
         val mode = extract_OrthologyMode(one2ManySettings, confidence)
         split match {
           case SplitExpressions.ByTissue =>
@@ -86,9 +87,9 @@ trait ExpressionsCommands  extends OrthologyCommands {
               (category: String, table) <- expressionTable.splitByTissue()
               output = category.replace("ens:", "").replace(":", "") + ".tsv"
             }
-            table.write_table((params.folder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
+              table.write_table((params.folder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
-          case SplitExpressions.ByClass  =>
+          case SplitExpressions.ByClass =>
             println(s"writing expressions to ${params.folder.pathAsString} splited by animal class")
             for {
               (category: String, table) <- expressionTable.splitByClass()
@@ -104,9 +105,9 @@ trait ExpressionsCommands  extends OrthologyCommands {
               subfolder = category1.replace("ens:", "").replace(":", "")
               output = category2.replace("ens:", "").replace(":", "") + ".tsv"
             }
-              table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep,sl = sl)(params.orthologyManager)
+              table2.write_table((params.folder / subfolder / output).pathAsString, mode, withGeneNames = gene_names, na = na, sep = sep, sl = sl)(params.orthologyManager)
 
-          case SplitExpressions.ByTissueAndClass=>
+          case SplitExpressions.ByTissueAndClass =>
             println(s"writing expressions to ${params.folder.pathAsString} with subfolders for each tissue with files per each animal class")
             for {
               (category1: String, table1) <- expressionTable.splitByTissue()
@@ -118,8 +119,9 @@ trait ExpressionsCommands  extends OrthologyCommands {
 
           case SplitExpressions.NoSplit =>
             println(s"writing all expressions to one file ${path}")
-            expressionTable.write_table(path, mode, withGeneNames = gene_names,na = na, rewrite = rewrite, sep = sep,sl = sl)(params.orthologyManager)
+            expressionTable.write_table(path, mode, withGeneNames = gene_names, na = na, rewrite = rewrite, sep = sep, sl = sl)(params.orthologyManager)
         }
+      }
     }
 
 

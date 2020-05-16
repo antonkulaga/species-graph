@@ -25,7 +25,19 @@ Subcommands:
 
 Application is also paked into docker container.
 
-Expresisons examples
+Indexes:
+--------
+getting index of samples
+```
+docker run -v /data/species:/data/species quay.io/comp-bio-aging/species-graph run samples_index --output /data/species/samples.tsv
+```
+
+getting index of species (only species for which we have samples considered)
+```
+docker run -v /data/species:/data/species quay.io/comp-bio-aging/species-graph run species_index --output /data/species/species.tsv
+```
+
+Expressions examples
 --------------------
 
 extracting genes from several samples (note: feel free to change /data/species folder/volume to whatever you like)

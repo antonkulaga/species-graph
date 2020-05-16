@@ -33,6 +33,9 @@ object SplitGenes extends Enum[SplitGenes] {
 }
 
 
+/**
+ * Trait with CLI commands about writing orthology tables
+ */
 trait OrthologyCommands extends SamplesCommands {
 
   lazy val genes: Opts[String] = Opts.option[String](long = "genes", help = "reference genes: either list of exact genes or the species names to take all genes from (default :Homo_sapiens)").withDefault(":Homo_sapiens")
@@ -40,7 +43,6 @@ trait OrthologyCommands extends SamplesCommands {
   lazy val orthologyPath: Opts[String] = Opts.option[String](long = "path", help = "Folder to store orthology tables")
 
   lazy val confidence: Opts[Confidence] = Opts.option[Confidence](long = "confidence", help = "How confident are we in orthologs").withDefault(Confidence.all)
-
 
   lazy val split: Opts[SplitGenes] = Opts.option[SplitGenes](long = "split", help = "How to split files (no_split, by_class, by_species)").withDefault(SplitGenes.NoSplit)
 
@@ -69,36 +71,36 @@ trait OrthologyCommands extends SamplesCommands {
 
   }
 
-  def write_orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String, sl: Int) =
+  def write_orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String, sl: Int) = time{
     (path, split, server, genes) match {
 
-    case (path, SplitGenes.NoSplit, server, gs) =>
-      val species: Vector[EnsemblSpecies] = new Species(server).species_in_samples()
-      implicit val orthologyManager = new OrthologyManager(server)
-      val reference_genes = extract_genes(gs)
+      case (path, SplitGenes.NoSplit, server, gs) =>
+        val species: Vector[EnsemblSpecies] = new Species(server).species_in_samples()
+        implicit val orthologyManager = new OrthologyManager(server)
+        val reference_genes = extract_genes(gs)
+
+        val folder = File(path)
+
+        writeGenes(reference_genes, species, folder, sl)
+
+    case (path, split, server, gs) if split == SplitGenes.ByClass | split == SplitGenes.BySpecies =>
 
       val folder = File(path)
-
-      writeGenes(reference_genes, species, folder, sl)
-
-    case (path, split, server, gs) if split ==  SplitGenes.ByClass | split == SplitGenes.BySpecies =>
-
-      val folder = File(path)
       implicit val orthologyManager = new OrthologyManager(server)
       val reference_genes = extract_genes(gs)
-      val speciesGrouped= new Species(server).species_in_samples().groupBy(s=> split match {
+      val speciesGrouped = new Species(server).species_in_samples().groupBy(s => split match {
         case SplitGenes.ByClass => s.animal_class.replace("ens:", "").replace(":", "")
         case SplitGenes.BySpecies => s.latin_name.replace("ens:", "").replace(":", "")
       })
-      for{
+      for {
         (cl, sp) <- speciesGrouped
         cl_name = cl
           .replace("http://rdf.ebi.ac.uk/resource/ensembl/", "")
           .replace("<", "").replace(">", "").replace("ens:", "")
-      }{
+      } {
         writeGenes(reference_genes, sp, folder / cl_name, sl)
       }
-
+    }
 
   }
 

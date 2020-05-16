@@ -58,7 +58,7 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
       shorten(mp("run")), shorten(mp("species")), shorten(mp("tissue")),Try(mp("lifespan").toDouble).getOrElse(Double.NaN), shorten(mp("animal_class"))))
   }
 
-  def samples_full(project: String = ":Cross-species"): Vector[ListMap[String, String]] = {
+  def samples_full(project: String = ":Cross-species", na: String = "N/A"): Vector[ListMap[String, String]] = {
    val query =  s"""${commonPrefixes}
       |SELECT * WHERE
       |{
@@ -87,7 +87,8 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
       |    ?run samples:has_protocol ?protocol .
       |} ORDER BY ?species ?bioproject ?series ?run
       |""".stripMargin
-    select_query(query)
+    val result = select_query_ordered(query, na)
+    result
   }
 
   def get_mammalian_samples_mini(): Vector[SampleMini] = samples_mini_by_class_and_tissue("ens:Mammalia")

@@ -2,8 +2,7 @@ package species.sparql
 
 import org.eclipse.rdf4j.sparqlbuilder.rdf.{Iri, Rdf}
 
-
-
+object Prefixes extends Prefixes
 class Prefixes {
 
   lazy val commonPrefixes: String =
@@ -44,7 +43,7 @@ class Prefixes {
 
   def pref(pre: String, str: String) = if(str.startsWith(pre) || str.startsWith("<")) str
     else if(str.contains(":")) u(str) else (pre +":"+str).replace("::", ":")
-  def u(str: String) = if(str.startsWith("http")) "<" + str + ">"
+  def u(str: String): String = if(str.startsWith("http")) "<" + str + ">"
     else if( (str.contains(":") || str.startsWith("<")) )  str else ":"+str
 
   def shorten(str: String): String = prefixes.collectFirst{ case (pre, value) if str.startsWith(value) => str.replace(value, pre +":")}.getOrElse(str)

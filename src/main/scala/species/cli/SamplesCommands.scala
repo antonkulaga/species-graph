@@ -1,17 +1,32 @@
 package species.cli
 
-import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 
 import better.files.File
-import com.monovore.decline.{Command, Opts}
 import cats.implicits._
-import com.monovore.decline._
-import _root_.enumeratum.{Enum, EnumEntry}
-import com.monovore.decline.enumeratum._
-import species.sparql.orthology.{OrthologyManager, OrthologyMode, OrthologyTable}
+import com.monovore.decline.{Command, Opts}
+import species.sparql.Prefixes
 import species.sparql.samples.{Samples, Species}
+import wvlet.log.LogSupport
 
-trait SamplesCommands {
+import scala.collection.immutable.ListMap
+
+trait SamplesCommands extends LogSupport{
+
+  def time[R](block: => R): R = {
+    val start = System.nanoTime()
+    val result = block    // call-by-name
+    val end = System.nanoTime()
+    info("Elapsed time: " + (end - start) * 1e+9 + "ns")
+    val difference = end - start
+    info("Total execution time: " +
+      TimeUnit.NANOSECONDS.toHours(difference) + " hours " +
+      ( TimeUnit.NANOSECONDS.toMinutes(difference) -  TimeUnit.HOURS.toMinutes(TimeUnit.NANOSECONDS.toHours(difference)))   + " min " +
+      ( TimeUnit.NANOSECONDS.toSeconds(difference) -  TimeUnit.MINUTES.toSeconds(TimeUnit.NANOSECONDS.toMinutes(difference))) + " sec " +
+      " - " + difference + " nSec (Total)")
+    result
+  }
+
 
   lazy val animal_classes = Vector(
     "http://rdf.ebi.ac.uk/resource/ensembl/Mammalia",
@@ -36,53 +51,54 @@ trait SamplesCommands {
   lazy val project: Opts[String] = Opts.option[String](long = "project", help = "which project do we take samples from (:Cross-species by default)").withDefault(":Cross-species")
 
   protected def sep(str: String) = if(str.contains(",")) "," else ";"
+  def simple_query_write(query: Vector[ListMap[String, String]], path: String, sep: String, rewrite: Boolean) = {
+    val f = File(path)
+    if(f.exists && rewrite) {
+      warn("output file " + f.pathAsString + " exists, deleting it to write new output")
+      f.delete()
+    }
+    f.createFileIfNotExists(true)
+    val keys = query.head.keys.toVector
+    f.appendLine(keys.mkString(sep))
+    for(s<-query) {
+      for(k<-keys) {
+        f.append(s.get(k).map(v=>if(v=="") na else Prefixes.shorten(v)).getOrElse(na) + sep)
+      }
+      f.appendLine("")
+    }
+    f
+  }
 
   lazy val samples_index: Command[Unit] = Command(
     name = "samples_index", header = "Generates list of samples"
   ) {
-    (output, server, project, separator).mapN(write_samples)
+    (output, server, project, separator, na).mapN(write_samples)
   }
-
-  protected def write_samples(path: String, server: String, project: String = ":Cross-species", sep: String):Unit = {
+  protected def write_samples(path: String, server: String, project: String = ":Cross-species", sep: String, na: String):Unit = time{
     val s = new Samples(server)
     val samples = s.samples_full(project)
     if(samples.nonEmpty){
-      val f = File(path)
-      if(f.exists) {
-        println("output file " + path + " exists, deleting it to write new output")
-        f.delete()
-      }
-      f.createFileIfNotExists(true)
-      f.appendLine(samples.head.keys.toVector.mkString(sep))
-      for(s<-samples) f.appendLine(s.values.toVector.mkString(sep))
-      println(s"FINISHED WRITING SAMPLES TO ${f.pathAsString}")
-    } else println("NO SAMPLES FOUND!")
+      val f =simple_query_write(samples, path, sep, true)
+      info(s"FINISHED WRITING SAMPLES TO ${f.pathAsString}")
+    } else warn("NO SAMPLES FOUND!")
 
   }
 
-/*
+
   lazy val species_index: Command[Unit] = Command(
-    name = "orthologs", header = "Generate orthology tables"
+    name = "species_index", header = "Generate species index"
   ) {
-    (species_path, server, all_species).mapN(write_orthologs_implementation)
+    (output, server, separator, na).mapN(write_species)
   }
 
-  def write_species(path: String, server: String, all: Boolean = false): Unit ={
+  def write_species(path: String, server: String, sep: String, na: String): Unit ={
     val sp = new Species(server)
     //if(all) sp.species_in_samples() else sp.species_in_samples()
-    val species = sp.species_in_samples()
-    if(samples.nonEmpty){
-      val f = File(path)
-      if(f.exists) {
-        println("output file " + path + " exists, deleting it to write new output")
-        f.delete()
-      }
-      f.createFileIfNotExists(true)
-      f.appendLine(samples.head.keys.toVector.mkString(sep))
-      for(s<-samples) f.appendLine(s.values.toVector.mkString(sep))
-      println(s"FINISHED WRITING SAMPLES TO ${f.pathAsString}")
-    } else println("NO SAMPLES FOUND!")
+    val species = sp.species()
+    if(species.nonEmpty){
+      val f = simple_query_write(species, path, sep , true)
+    } else println("NO SPECIES FOUND IN SAMPLES!")
   }
- */
+
 
 }
