@@ -2,6 +2,7 @@ package species.sparql.orthology
 
 import better.files.File
 import species.sparql.samples.EnsemblSpecies
+import wvlet.log.LogSupport
 
 import scala.collection.compat._
 import scala.collection.immutable._
@@ -14,86 +15,79 @@ object OrthologyTable {
  * Class that comparised orthology tables by concating
  */
 class OrthologyTable(ensemblSpecies: IndexedSeq[EnsemblSpecies],
-                     orthologyManager: OrthologyManager = OrthologyManager.default) extends GenesAggregator   {
+                     orthologyManager: OrthologyManager = OrthologyManager.default) extends GenesAggregator  with LogSupport  {
   import OrthologyTable.Aggregation
   lazy val referenceSpecies: EnsemblSpecies = ensemblSpecies.head
-  lazy val otherSpecies: IndexedSeq[EnsemblSpecies] = ensemblSpecies.tail
+  //lazy val otherSpecies: IndexedSeq[EnsemblSpecies] = ensemblSpecies.tail
   lazy val speciesNames: IndexedSeq[String] = ensemblSpecies.map(_.latin_name)
 
 
   def writeOrthologyCounts(gs: Seq[String],
                            orthologyMode: OrthologyMode = OrthologyMode.default,
                            path: String = "/data/species/test_counts.tsv",
-                           sl: Int = 1000, max_slides: Int = Int.MaxValue): File = {
+                           sl: Int = 1000, max_slides: Int = Int.MaxValue, na: String = "N/A"): File = {
     //val sl = 1000
     val geneSlides= gs.sliding(sl, sl).take(max_slides)
       .map(_.toVector).toVector
     //pprintln(species)
     val agg: Aggregation = orthologyMode.confidence.map(c=>agg_counts_with_confidence(c) _).getOrElse(agg_counts())
-    writeAggregation(orthologyMode, path, geneSlides, agg)
-    println("SUCCESSFULLY FINISHED!")
+    writeAggregatedOrthologs(orthologyMode, path, geneSlides, na)( agg)
+    info("SUCCESSFULLY FINISHED ORTHOLOGY COUNTING")
     File(path)
   }
 
-  def writeOrthology(gs: Seq[String],
+  def writeOrthologs(gs: Seq[String],
                      orthologyMode: OrthologyMode = OrthologyMode.default,
                      path: String = "/data/species/test.tsv",
-                     sl: Int = 1000, max_slides: Int = Int.MaxValue
+                     sl: Int = 1000, max_slides: Int = Int.MaxValue, na: String = "N/A"
                     ): File = {
     val geneSlides: Vector[Vector[String]] = gs.sliding(sl, sl).take(max_slides)
       .map(_.toVector).toVector
     val agg: Aggregation = orthologyMode.confidence.map(c=>agg_concat_with_confidence(c) _).getOrElse(agg_concat_ids())
-    writeAggregation(orthologyMode, path, geneSlides, agg)
+    writeAggregatedOrthologs(orthologyMode, path, geneSlides, na)( agg)
     println(s"Finished writing orthology table for ${gs.length} genes by ${geneSlides.length} batches of ${sl}!")
     File(path)
   }
 
-  protected def writeAggregation(orthologyMode: OrthologyMode,
-                                 path: String,
-                                 geneSlides: Vector[Vector[String]],
-                                 agg: Map[String, Vector[Orthology]] => Map[String, String]): Unit = {
+  protected def writeAggregatedOrthologs(orthologyMode: OrthologyMode,
+                                         path: String,
+                                         geneSlides: Vector[Vector[String]],
+                                         na: String = "N/A")(agg: Aggregation): Unit =
     for ((slide, i) <- geneSlides.zipWithIndex) {
-      val orthologsBySpecies= orthologyManager.orthologs(slide, orthologyMode).groupBy(_.species).map{ case (key, values) =>
-          key -> ListMap.from(speciesNames.tail.map(s=>s->values.filter(o=>s.contains(o.species))))
-      }
-      val p = this.write_by_species(path, orthologsBySpecies , headers = (i == 0))(agg)
-      println("slide_" + i + " :" + p.pathAsString)
+      val byReference: Map[String, Vector[Orthology]] = orthologyManager.orthologs_by_ref(slide, orthologyMode, speciesNames)
+      val result: ListMap[String, Map[String, String]] = ListMap.from(
+        for {
+          g <- slide
+          if byReference.contains(g)
+        } yield g -> agg(byReference(g).groupBy(o => o.species))
+      )
+      val p = this.write_by_species(path, result, headers = (i == 0), na = na)
+      info("slide_" + i + " :" + p.pathAsString)
     }
-  }
 
 
   /**
    * Gets already aggregated results and write to the file
    * @param path to the file , if the file does not exist it will be created, otherwise - extended
-   * @param genes genes found
    * @param headers if we need headers in the csv
    * @param sep separator (tab by default)
-   * @param shorten_names if we want to get rid of redundant prefixes
-   * @param agg_by_species
    * @return
    */
   def write_by_species(path: String,
-                       genes:  Map[String, Map[String, Vector[Orthology]]],
+                       byReference:  ListMap[String, Map[String, String]],
                        headers: Boolean = true,
-                       sep: String = "\t",
-                       shorten_names: Boolean = true)(
-                       agg_by_species: Aggregation
+                       sep: String = "\t", na: String = "N/A")(
                       ): File = {
     val f = File(path).createFileIfNotExists(true)
     if(headers){
-      val sp_headers = if(shorten_names)
-        speciesNames.map(_.replace("http://aging-research.group/resource/", ""))
-      else speciesNames
-      f.appendLine(sp_headers.mkString(sep))
+      f.appendLine(speciesNames.mkString(sep))
     }
-    val grouped_genes: Map[String, Map[String, String]] = genes.map{ case (k, v)=>k->agg_by_species(v)}
     for{
-      (reference, by_species) <- grouped_genes
+      (reference, by_species) <- byReference
       if by_species.nonEmpty
     } {
-      val app = for(s <- speciesNames) yield by_species.getOrElse(s, "null")
-      val ref = if(shorten_names) reference.replace("http://rdf.ebi.ac.uk/resource/ensembl/", "ens:") else reference
-      f.appendLine(ref + sep + app.mkString(sep))
+      val app = for(s <- speciesNames.tail) yield by_species.getOrElse(s, na)
+      f.appendLine(reference + sep + app.mkString(sep))
     }
     f
   }

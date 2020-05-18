@@ -43,13 +43,14 @@ trait SamplesCommands extends LogSupport{
 
   //lazy val samples_path: Opts[String] = Opts.option[String](long = "samples_path", help = "Where to store samples jnfo")
   //lazy val species_path: Opts[String] = Opts.option[String](long = "species_path", help = "Where to store species info")
-  lazy val output: Opts[String] = Opts.option[String](long = "output", help = "Where to write output")
+  lazy val output: Opts[String] = Opts.option[String](long = "output", help = "File or Folder to write output")
 
   lazy val all_species: Opts[Boolean] = Opts.flag(long = "all", "if we should include all species (incl. those for which we have no samples) to the index (false by default").orFalse
 
   lazy val project: Opts[String] = Opts.option[String](long = "project", help = "which project do we take samples from (:Cross-species by default)").withDefault(":Cross-species")
 
-  protected def sep(str: String) = if(str.contains(",")) "," else ";"
+  protected def delimiter(str: String) = if(str.contains(",")) "," else ";"
+
   def simple_query_write(query: Vector[ListMap[String, String]], path: String, sep: String, rewrite: Boolean) = {
     val f = File(path)
     if(f.exists && rewrite) {

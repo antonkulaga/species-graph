@@ -43,6 +43,7 @@ class Prefixes {
 
   def pref(pre: String, str: String) = if(str.startsWith(pre) || str.startsWith("<")) str
     else if(str.contains(":")) u(str) else (pre +":"+str).replace("::", ":")
+
   def u(str: String): String = if(str.startsWith("http")) "<" + str + ">"
     else if( (str.contains(":") || str.startsWith("<")) )  str else ":"+str
 

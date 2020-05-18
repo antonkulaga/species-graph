@@ -26,9 +26,27 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
        |      ?species :has_taxon ?taxon .
        |      ?species :has_temperature_kelvin ?temperature_kelvin .
        |	    ?species rdf:type :Species .
-       |} ORDER BY ?is_animal_class DESC(?lifespan)
+       |} ORDER BY ?animal_class DESC(?lifespan)
        |""".stripMargin
         select_query_ordered(query, na)
+  }
+
+  def species_for_genes(genes: Vector[String]): Vector[EnsemblSpecies] = {
+    val query = s"""${commonPrefixes}
+                   |SELECT DISTINCT ?species ?common_name ?animal_class  ?lifespan ?ensembl_url  ?taxon WHERE
+                   |{
+                   |	?species rdf:type :Species .
+                   |    ${values(name = "gene", genes.map(ens))}
+                   |    ?species :has_gene ?gene .
+                   |    ?species :has_common_name ?common_name .
+                   |    ?species :is_animal_class ?animal_class .
+                   |    ?species :has_taxon ?taxon .
+                   |    ?species :has_lifespan ?lifespan .
+                   |    ?species :has_ensembl_url ?ensembl_url .
+                   |} ORDER BY ?animal_class DESC(?lifespan)
+                   |""".stripMargin
+    select_query(query)
+      .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"), f("ensembl_url"),  f("taxon")))
   }
   /**
    * Gets species in the samples if
@@ -47,7 +65,7 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
                    |    ?species :has_taxon ?taxon .
                    |    ?species :has_lifespan ?lifespan .
                    |    ?species :has_ensembl_url ?ensembl_url .
-                   |} ORDER BY DESC(?lifespan)
+                   |} ORDER BY ?animal_class DESC(?lifespan)
                    |""".stripMargin
     select_query(query)
       .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"), f("ensembl_url"),  f("taxon")))

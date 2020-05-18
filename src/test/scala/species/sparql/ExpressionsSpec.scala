@@ -111,7 +111,7 @@ class ExpressionsSpec extends AnyWordSpec {
       assert(result_one2one.rows.head.referenceGene === genes.head)
       assert(result_one2one.rows.tail.head.referenceGene === genes.tail.head)
       val second = result_one2one.rows.tail.head
-      println(second.with_tsv_header_simple(withGeneNames = true))
+      println(second.make_tsv_header(withGeneNames = true))
       println(second.as_tsv_simple_string(withGeneNames = true))
     }
 
@@ -134,7 +134,7 @@ class ExpressionsSpec extends AnyWordSpec {
       println("--PANDA_1st_row_one_to_many--")
       pprint.pprintln(second)
       println("--PANDA_1st_row_one_to_many_TSV--")
-      println(second.with_tsv_header_simple(withGeneNames = true))
+      println(second.make_tsv_header(withGeneNames = true))
       println(second.as_tsv_simple_string(withGeneNames = true))
       println(second.as_tsv_sum_string(withGeneNames = true))
     }

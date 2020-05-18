@@ -43,24 +43,38 @@ trait ExpressionsCommands  extends OrthologyCommands {
   }
 
   lazy val samples: Opts[String] = Opts.option[String](long = "samples", help = "samples (all by default))").withDefault("all")
-  lazy val expressionsPath: Opts[String] = Opts.option[String](long = "path", help = "Folder to store orthology tables")
   lazy val splitExpressions: Opts[SplitExpressions] = Opts.option[SplitExpressions](long = "split",
     help = "How to split expressions (nosplit, byclass, byclassandtissu, bytissue)").withDefault(SplitExpressions.NoSplit)
   lazy val one_2_many_settings: Opts[One2ManySettings] = Opts.option[One2ManySettings](long = "one2many",
     help = "How to handler one_2_many genes (process one2one only by default").withDefault(One2ManySettings.one2one_only)
 
 
-  def write_expression_implementation(path: String, split:SplitExpressions,
-                                      one2ManySettings: One2ManySettings,
-                                      samples: String,
-                                      genes: String,
-                                      verbose: Boolean,
-                                      na: String,
-                                      server: String,
-                                      sep: String,
-                                      rewrite: Boolean,
-                                      sl: Int,
-                                      confidence: Confidence
+  /**
+   * Function that implements expressions command
+   * @param path File or Folder to write output
+   * @param split how to split gene expressions
+   * @param one2ManySettings
+   * @param samples
+   * @param genes
+   * @param verbose
+   * @param na
+   * @param server
+   * @param sep
+   * @param rewrite
+   * @param sl
+   * @param confidence
+   */
+  def expressions_implementation(path: String, split:SplitExpressions,
+                                 one2ManySettings: One2ManySettings,
+                                 samples: String,
+                                 genes: String,
+                                 verbose: Boolean,
+                                 na: String,
+                                 server: String,
+                                 sep: String,
+                                 rewrite: Boolean,
+                                 sl: Int,
+                                 confidence: Confidence
                                      ): Unit = time {
 
     (path: String, split:SplitExpressions,
@@ -125,12 +139,15 @@ trait ExpressionsCommands  extends OrthologyCommands {
     }
 
 
+  /**
+   * expresions command to generate Expression tables
+   */
   lazy val expressions: Command[Unit] = Command(
     name = "expressions", header = "Generate expression tables"
   ) {
 
-    (expressionsPath, splitExpressions, one_2_many_settings, samples, genes, verbose, na, server, separator, rewrite, slide, confidence).mapN {
-      write_expression_implementation
+    (output, splitExpressions, one_2_many_settings, samples, genes, verbose, na, server, separator, rewrite, slide, confidence).mapN {
+      expressions_implementation
     }
   }
 

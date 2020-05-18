@@ -22,7 +22,7 @@ object Confidence extends Enum[Confidence] {
 }
 
 
-sealed trait SplitGenes extends EnumEntry with EnumEntry.Lowercase
+sealed trait SplitGenes extends EnumEntry with EnumEntry.Snakecase
 
 object SplitGenes extends Enum[SplitGenes] {
   case object NoSplit extends SplitGenes
@@ -40,8 +40,6 @@ trait OrthologyCommands extends SamplesCommands {
 
   lazy val genes: Opts[String] = Opts.option[String](long = "genes", help = "reference genes: either list of exact genes or the species names to take all genes from (default :Homo_sapiens)").withDefault(":Homo_sapiens")
 
-  lazy val orthologyPath: Opts[String] = Opts.option[String](long = "path", help = "Folder to store orthology tables")
-
   lazy val confidence: Opts[Confidence] = Opts.option[Confidence](long = "confidence", help = "How confident are we in orthologs").withDefault(Confidence.all)
 
   lazy val split: Opts[SplitGenes] = Opts.option[SplitGenes](long = "split", help = "How to split files (no_split, by_class, by_species)").withDefault(SplitGenes.NoSplit)
@@ -50,6 +48,11 @@ trait OrthologyCommands extends SamplesCommands {
 
   lazy val verbose: Opts[Boolean] = Opts.flag(long = "verbose", "Includes additional information for debuging (i.e. gene id-s)").orFalse
 
+  lazy val orthologs: Command[Unit] = Command(
+    name = "orthologs", header = "Generate orthology tables"
+  ) {
+    (output, split, server, genes, slide, rewrite, na).mapN(orthologs_implementation)
+  }
 
   /**
    * Extracts genes from command line parameters
@@ -64,24 +67,32 @@ trait OrthologyCommands extends SamplesCommands {
       result
     } else {
       if(gs.toLowerCase().contains("ens") || gs.contains(";") || gs.contains(",")) {
-        gs.split(sep(gs)).map(g=> orthologyManager.ens(g)).toVector
-      } else
-        orthologyManager.speciesGenes((":"+gs).replace("::", ":"))
+        val result = gs.split(delimiter(gs)).map(g=> orthologyManager.ens(g)).toVector
+        info(result)
+        result
+      } else {
+        val result = orthologyManager.speciesGenes((":" + gs).replace("::", ":"))
+        info(s"using all ${result.size} genes of ${gs}")
+        result
+      }
     }
 
   }
 
-  def write_orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String, sl: Int) = time{
+  def orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String, sl: Int, rewrite: Boolean, na: String) = time{
     (path, split, server, genes) match {
 
       case (path, SplitGenes.NoSplit, server, gs) =>
-        val species: Vector[EnsemblSpecies] = new Species(server).species_in_samples()
+        val sp = new Species(server)
+        val ref_sp: String = if(gs.startsWith(":") || (!gs.contains(":") && gs.contains("_"))) gs else {
+          val ss = sp.species_for_genes(gs.split(delimiter(gs)).toVector)
+          ss.headOption.map(_.latin_name).getOrElse(":Homo_sapiens")
+        }
+        val species: Vector[EnsemblSpecies] = sp.species_in_samples()
         implicit val orthologyManager = new OrthologyManager(server)
         val reference_genes = extract_genes(gs)
-
         val folder = File(path)
-
-        writeGenes(reference_genes, species, folder, sl)
+        writeGenes(reference_genes, (species.find(s=> s.latin_name.contains(ref_sp)).head+: species.filter(s=> !s.latin_name.contains(ref_sp))), folder, sl, rewrite, na)
 
     case (path, split, server, gs) if split == SplitGenes.ByClass | split == SplitGenes.BySpecies =>
 
@@ -98,35 +109,29 @@ trait OrthologyCommands extends SamplesCommands {
           .replace("http://rdf.ebi.ac.uk/resource/ensembl/", "")
           .replace("<", "").replace(">", "").replace("ens:", "")
       } {
-        writeGenes(reference_genes, sp, folder / cl_name, sl)
+        writeGenes(reference_genes, sp, folder / cl_name, sl, rewrite, na)
       }
     }
 
   }
 
-  lazy val orthologs: Command[Unit] = Command(
-    name = "orthologs", header = "Generate orthology tables"
-  ) {
-    (orthologyPath, split, server, genes, slide).mapN(write_orthologs_implementation)
-  }
-
-
-
-  def writeGenes(genes: Vector[String], species: Vector[EnsemblSpecies], folder: File, slide: Int): Unit = {
+   def writeGenes(genes: Vector[String], species: Vector[EnsemblSpecies], folder: File, slide: Int, rewrite: Boolean, na: String): Unit = {
     info(s"writing orthology table for ${folder.pathAsString}")
+    if(rewrite && folder.exists){
+      warn(s"${folder.pathAsString} already exists, deleting it to rewrite!")
+    }
     folder.createDirectoryIfNotExists()
     val orthologyTable = new OrthologyTable(species)
-    orthologyTable.writeOrthology(genes,  OrthologyMode.one2one, (folder / "one2one.tsv").pathAsString, sl = slide)
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.one2one, (folder / "one2one.tsv").pathAsString, sl = slide, na = na)
     info("ONE2ONE finished")
-    orthologyTable.writeOrthology(genes,  OrthologyMode.one2many , (folder / "one2many.tsv").pathAsString, sl = slide)
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.one2many , (folder / "one2many.tsv").pathAsString, sl = slide, na = na)
     info("ONE2MANY finished")
-    orthologyTable.writeOrthology(genes,  OrthologyMode.one2many_directed , (folder / "one2many_directed.tsv").pathAsString, sl = slide)
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.one2many_directed , (folder / "one2many_directed.tsv").pathAsString, sl = slide, na = na)
     info("ONE2MANY directed finished")
-    orthologyTable.writeOrthology(genes,  OrthologyMode.many2many,  (folder / "many2many.tsv").pathAsString, sl = slide)
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.many2many,  (folder / "many2many.tsv").pathAsString, sl = slide, na = na)
     info("MANY2MANY finished")
-    orthologyTable.writeOrthology(genes,  OrthologyMode.all , (folder / "all.tsv").pathAsString, sl = slide)
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.all , (folder / "all.tsv").pathAsString, sl = slide, na = na)
     info("ALL finished")
     info(s"writing orthology table for ${folder.pathAsString} FINISHED")
-    info("-----------------------")
   }
 }
