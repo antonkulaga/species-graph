@@ -7,6 +7,8 @@ import species.sparql.QueryBase
 import scala.collection.immutable._
 import scala.collection.compat._
 
+case class GeneInfo(gene: String, symbol: String, species: String)
+
 object OrthologyManager{
   def human(serverURL: String ="http://10.40.3.21:7200/") = OrthologyManager("Homo_sapiens", serverURL)
   lazy val default = human()
@@ -60,11 +62,38 @@ case class OrthologyManager(speciesName: String = "Homo_sapiens",
     )
   }
 
+  def genesInfo(genes: Vector[String]): Vector[GeneInfo] = {
+    val query =
+      s"""
+         |$commonPrefixes
+         |SELECT ?gene ?symbol ?species
+         |WHERE {
+         |${values("gene", genes.map(u))}
+         |?species :has_gene ?gene .
+         |OPTIONAL { ?gene rdfs:label ?symbol } .
+         |}
+         |""".stripMargin
+    val results: Seq[ListMap[String, String]] = select_query(query)
+    results.map(mp=>GeneInfo(shorten(mp("gene")), mp.getOrElse("symbol", ""), shorten(mp("species")))).toVector
+  }
+
+  def speciesGeneInfo(species: Seq[String] = Vector(":Homo_sapiens")): Vector[GeneInfo] = {
+    val query =
+      s"""
+         |$commonPrefixes
+         |SELECT ?gene ?symbol ?species
+         |WHERE {
+         |${values("species", species.map(u))}
+         |?species :has_gene ?gene .
+         |OPTIONAL { ?gene rdfs:label ?symbol } .
+         |}
+         |""".stripMargin
+    val results: Seq[ListMap[String, String]] = select_query(query)
+    results.map(mp=>GeneInfo(shorten(mp("gene")), mp.getOrElse("symbol", ""), shorten(mp("species")))).toVector
+  }
+
 
   def speciesGenes(species: String = "http://aging-research.group/resource/Homo_sapiens"): Vector[String] = {
-    import RDF._
-      val gene = variable("gene")
-      val sp = if(species.contains(":")) species else s"http://aging-research.group/resource/${species}"
     val query =
       s"""
         |$commonPrefixes

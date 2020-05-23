@@ -8,7 +8,7 @@ import cats.implicits._
 import com.monovore.decline._
 import _root_.enumeratum.{Enum, EnumEntry}
 import com.monovore.decline.enumeratum._
-import species.sparql.orthology.{OrthologyManager, OrthologyMode, OrthologyTable}
+import species.sparql.orthology.{GeneInfo, OrthologyManager, OrthologyMode, OrthologyTable}
 import species.sparql.samples.{EnsemblSpecies, Species}
 
 sealed trait Confidence extends EnumEntry with EnumEntry.Lowercase
@@ -42,7 +42,7 @@ trait OrthologyCommands extends SamplesCommands {
 
   lazy val confidence: Opts[Confidence] = Opts.option[Confidence](long = "confidence", help = "How confident are we in orthologs").withDefault(Confidence.all)
 
-  lazy val split: Opts[SplitGenes] = Opts.option[SplitGenes](long = "split", help = "How to split files (no_split, by_class, by_species)").withDefault(SplitGenes.NoSplit)
+  lazy val split: Opts[SplitGenes] = Opts.option[SplitGenes](long = "split", help = "How to split files (no_split, by_class, by_class_with_human by_species)").withDefault(SplitGenes.NoSplit)
 
   lazy val slide: Opts[Int] = Opts.option[Int](long = "slide", help = "splits genes into batches of <slide> genes (25000 by default)").withDefault(25000)
 
@@ -51,7 +51,7 @@ trait OrthologyCommands extends SamplesCommands {
   lazy val orthologs: Command[Unit] = Command(
     name = "orthologs", header = "Generate orthology tables"
   ) {
-    (output, split, server, genes, slide, rewrite, na).mapN(orthologs_implementation)
+    (output, split, server, genes, slide, rewrite, na, prefixed, with_empty_rows).mapN(orthologs_implementation)
   }
 
   /**
@@ -60,18 +60,18 @@ trait OrthologyCommands extends SamplesCommands {
    * @param orthologyManager
    * @return
    */
-  protected def extract_genes(gs: String)(implicit orthologyManager: OrthologyManager): Vector[String] = {
+  protected def extract_genes(gs: String)(implicit orthologyManager: OrthologyManager): Vector[GeneInfo] = {
     if(gs.startsWith(":") && gs.contains("_")) {
-      val result = orthologyManager.speciesGenes(gs)
+      val result = orthologyManager.speciesGeneInfo(Vector(gs))
       info(s"using all ${result.size} genes of ${gs}")
       result
     } else {
       if(gs.toLowerCase().contains("ens") || gs.contains(";") || gs.contains(",")) {
-        val result = gs.split(delimiter(gs)).map(g=> orthologyManager.ens(g)).toVector
+        val result = orthologyManager.genesInfo(gs.split(delimiter(gs)).map(g=> orthologyManager.ens(g)).toVector)
         info(result)
         result
       } else {
-        val result = orthologyManager.speciesGenes((":" + gs).replace("::", ":"))
+        val result = orthologyManager.speciesGeneInfo(Vector(":" + gs.replace("::", ":")))
         info(s"using all ${result.size} genes of ${gs}")
         result
       }
@@ -79,7 +79,7 @@ trait OrthologyCommands extends SamplesCommands {
 
   }
 
-  def orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String, sl: Int, rewrite: Boolean, na: String) = time{
+  def orthologs_implementation(path: String, split:SplitGenes, server: String, genes: String, sl: Int, rewrite: Boolean, na: String, prefix: Boolean, empty_rows: Boolean) = time{
     (path, split, server, genes) match {
 
       case (path, SplitGenes.NoSplit, server, gs) =>
@@ -92,45 +92,54 @@ trait OrthologyCommands extends SamplesCommands {
         implicit val orthologyManager = new OrthologyManager(server)
         val reference_genes = extract_genes(gs)
         val folder = File(path)
-        writeGenes(reference_genes, (species.find(s=> s.latin_name.contains(ref_sp)).head+: species.filter(s=> !s.latin_name.contains(ref_sp))), folder, sl, rewrite, na)
+        val sps = (species.find(s=> s.latin_name.contains(ref_sp)).head+: species.filter(s=> !s.latin_name.contains(ref_sp)))
+        writeGenes(reference_genes,
+          sps, folder, sl, rewrite, na, !prefix, empty_rows)
 
     case (path, split, server, gs) if split == SplitGenes.ByClass | split == SplitGenes.BySpecies =>
 
       val folder = File(path)
       implicit val orthologyManager = new OrthologyManager(server)
       val reference_genes = extract_genes(gs)
-      val speciesGrouped = new Species(server).species_in_samples().groupBy(s => split match {
-        case SplitGenes.ByClass => s.animal_class.replace("ens:", "").replace(":", "")
+      val species_in_samples = new Species(server).species_in_samples()
+      val speciesGrouped = species_in_samples.groupBy(s => split match {
+        case SplitGenes.ByClass   => s.animal_class.replace("ens:", "").replace(":", "")
         case SplitGenes.BySpecies => s.latin_name.replace("ens:", "").replace(":", "")
+        case split => throw new Exception(s"this ${split} should never happen!")
       })
+      //val human: Option[EnsemblSpecies] = species_in_samples.find(_.latin_name.toLowerCase.contains("homo_sapiens"))
       for {
         (cl, sp) <- speciesGrouped
         cl_name = cl
           .replace("http://rdf.ebi.ac.uk/resource/ensembl/", "")
           .replace("<", "").replace(">", "").replace("ens:", "")
       } {
-        writeGenes(reference_genes, sp, folder / cl_name, sl, rewrite, na)
+        //val sps= human.map(h=>(h +: sp).distinct).getOrElse(sp)
+        writeGenes(reference_genes, sp, folder / cl_name, sl, rewrite, na, !prefix, empty_rows)
       }
     }
-
+    info("Finished writing orthologies for the")
   }
 
-   def writeGenes(genes: Vector[String], species: Vector[EnsemblSpecies], folder: File, slide: Int, rewrite: Boolean, na: String): Unit = {
+   def writeGenes(genes: Vector[GeneInfo], species: Vector[EnsemblSpecies], folder: File, slide: Int, rewrite: Boolean, na: String, no_prefix: Boolean, empty_rows: Boolean): Unit = {
     info(s"writing orthology table for ${folder.pathAsString}")
     if(rewrite && folder.exists){
       warn(s"${folder.pathAsString} already exists, deleting it to rewrite!")
+      folder.delete()
     }
     folder.createDirectoryIfNotExists()
     val orthologyTable = new OrthologyTable(species)
-    orthologyTable.writeOrthologs(genes,  OrthologyMode.one2one, (folder / "one2one.tsv").pathAsString, sl = slide, na = na)
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.one2one, (folder / "one2one.tsv").pathAsString, sl = slide, na = na, no_prefix = no_prefix, empty_rows = empty_rows)
     info("ONE2ONE finished")
-    orthologyTable.writeOrthologs(genes,  OrthologyMode.one2many , (folder / "one2many.tsv").pathAsString, sl = slide, na = na)
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.one2many , (folder / "one2many.tsv").pathAsString, sl = slide, na = na, no_prefix = no_prefix, empty_rows = empty_rows)
     info("ONE2MANY finished")
-    orthologyTable.writeOrthologs(genes,  OrthologyMode.one2many_directed , (folder / "one2many_directed.tsv").pathAsString, sl = slide, na = na)
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.one2many_directed , (folder / "one2many_directed.tsv").pathAsString, sl = slide, na = na, no_prefix = no_prefix, empty_rows = empty_rows)
     info("ONE2MANY directed finished")
-    orthologyTable.writeOrthologs(genes,  OrthologyMode.many2many,  (folder / "many2many.tsv").pathAsString, sl = slide, na = na)
-    info("MANY2MANY finished")
-    orthologyTable.writeOrthologs(genes,  OrthologyMode.all , (folder / "all.tsv").pathAsString, sl = slide, na = na)
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.one2oneplus_directed , (folder / "one2oneplus_directed.tsv").pathAsString, sl = slide, na = na, no_prefix = no_prefix, empty_rows = empty_rows)
+    info("one2oneplus_directed finished")
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.many2many,  (folder / "many2many.tsv").pathAsString, sl = slide, na = na, no_prefix = no_prefix, empty_rows = empty_rows)
+    info("MANY2MANY directed finished")
+    orthologyTable.writeOrthologs(genes,  OrthologyMode.all , (folder / "all.tsv").pathAsString, sl = slide, na = na, no_prefix = no_prefix, empty_rows = empty_rows)
     info("ALL finished")
     info(s"writing orthology table for ${folder.pathAsString} FINISHED")
   }

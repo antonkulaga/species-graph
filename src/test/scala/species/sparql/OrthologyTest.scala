@@ -10,7 +10,23 @@ class OrthilogySpec extends AnyWordSpec {
   protected def cut(str: String) = str.substring(Math.max(str.lastIndexOf("/"),str.lastIndexOf(":"))+1)
 
   "orthology" should   {
-    "get proper genes" in {
+
+    "get gene info" in {
+      val mtor = "ens:ENSG00000198793"
+      val igf1 = "ens:ENSG00000017427"
+      val server = "http://10.40.3.21:7200/"
+      val ortho = new OrthologyManager(server)
+      val genes = ortho.speciesGeneInfo()
+      assert(genes.exists(g=>g.symbol.toLowerCase.contains("igf")))
+      assert(genes.exists(g=>g.symbol.toLowerCase.contains("tor")))
+
+      val humanGenes = ortho.speciesGeneInfo(Vector("Homo_sapiens"))
+      assert(humanGenes.exists(g=>g.gene==igf1))
+      assert(humanGenes.exists(g=>g.gene==mtor))
+
+    }
+
+    "get proper orthologs" in {
 
       val ground_genes = Set(
         "ens:ENSMUSG00000020053","ens:ENSSSCG00000000857","ens:ENSBTAG00000011082"
@@ -25,6 +41,7 @@ class OrthilogySpec extends AnyWordSpec {
       val by_ref = ortho.orthologs_by_ref(Vector("ens:ENSG00000017427"), OrthologyMode.all,Seq(":Mus_musculus", ":Bos_taurus", ":Sus_scrofa"))
       assert(by_ref.keySet.map(cut) === Set(cut("ens:ENSG00000017427")))
 
+      /*
       val query = """
         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -45,7 +62,7 @@ class OrthilogySpec extends AnyWordSpec {
         |    ?ortholog rdfs:label ?ortholog_symbol
         |}
         |""".stripMargin
-
+        */
       //val results2 = ortho.select_query(query)
     }
   }

@@ -34,6 +34,7 @@ object OrthologyMode{
   lazy val all_high = OrthologyMode(true, true, true, Some("high"))
   lazy val default = OrthologyMode(true, true, false, None)
   lazy val default_high = OrthologyMode(true, true, false, Some("high"))
+  lazy val one2oneplus_directed = OrthologyMode(true, true, false, None, true)
   lazy val one2one = OrthologyMode(true, false, false, None)
   lazy val one2one_high = OrthologyMode(true, false, false, Some("high"))
   lazy val one2many = OrthologyMode(false, true, false, None)
@@ -54,8 +55,9 @@ case class OrthologyMode(  one2one: Boolean,
 {
  // require(one2one || one2many || many2many, "at least one type of orthology must be true!")
   private lazy val one2oneString: String = if(one2one) "ens:ortholog_one2one" else ""
-  private lazy val one2manyString: String = if(one2many)
-    if(directed) ":one2many" else "ens:ortholog_one2many" else ""
+  private lazy val one2manyString: String = if(one2many) {
+    if(directed) ":one2many" else "ens:ortholog_one2many"
+  } else ""
   private lazy val many2manyString: String = if(many2many) "ens:ortholog_many2many" else ""
 
 

@@ -32,8 +32,10 @@ case class ExpressionTable(referenceGenes: Vector[String], exp: MultiSpeciesExpr
                   sep: String = "\t",
                   withGeneNames : Boolean = false,
                   na: String = "N/A",
-                  sl: Int = 10000, max_slides: Int = Int.MaxValue, rewrite: Boolean = false
-                                   )(implicit orthologyManager: OrthologyManager) = {
+                  sl: Int = 10000, max_slides: Int = Int.MaxValue,
+                  no_prefix: Boolean,
+                    rewrite: Boolean// = false,
+                 )(implicit orthologyManager: OrthologyManager) = {
     val f = File(path)
     if(rewrite){
         if(f.exists) {
@@ -49,9 +51,9 @@ case class ExpressionTable(referenceGenes: Vector[String], exp: MultiSpeciesExpr
     {
       val results: ExpressionResults = exp.expressionsResults(slide, mode)(orthologyManager)
       val rows = results.rows
-      if(header && i==0) f.appendLine(rows.head.make_tsv_header(sep, withGeneNames))
+      if(header && i==0) f.appendLine(rows.head.make_tsv_header(sep, withGeneNames)(no_prefix))
       for(row <- rows){
-        f.appendLine(row.as_tsv_simple_string(sep, withGeneNames = withGeneNames))
+        f.appendLine(row.as_tsv_simple_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix))
       }
       println("writing parts ["+(i+1) + " from "+sls.length +s"] to ${f.pathAsString}")
     }

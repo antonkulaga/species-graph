@@ -1,6 +1,7 @@
 package species.sparql.expressions
 
 
+import species.sparql.Extras
 import species.sparql.orthology.{Orthology, OrthologyManager, OrthologyMode}
 import species.sparql.samples.SampleMini
 
@@ -13,16 +14,15 @@ import scala.collection.compat._
  * @param samplesExpressions
  */
 case class ExpressionRow(referenceGene: String,
-                         samplesExpressions: ListMap[SampleMini, Vector[OrthologExpression]])
+                         samplesExpressions: ListMap[SampleMini, Vector[OrthologExpression]]) extends Extras
 {
 
-
-  def make_tsv_header(sep: String = "\t",withGeneNames:Boolean = false): String = {
-    "reference_gene" + sep + samplesExpressions.keys.map(s=>if(withGeneNames) s.species + sep + s.run else s.run).mkString(sep)
+  def make_tsv_header(sep: String = "\t",withGeneNames:Boolean = false)(implicit no_prefix: Boolean): String = {
+    "reference_gene" + sep + samplesExpressions.keys.map(s=>if(withGeneNames) up(s.species) + sep + up(s.run) else up(s.run)).mkString(sep)
   }
 
-  def as_tsv_string(sep: String = "\t")(aggregate: Vector[OrthologExpression] => String): String = {
-    referenceGene + sep + samplesExpressions.map{ case (s,v) => aggregate(v)}.mkString(sep)
+  def as_tsv_string(sep: String = "\t")(aggregate: Vector[OrthologExpression] => String)(implicit no_prefix: Boolean): String = {
+    up(referenceGene) + sep + samplesExpressions.map{ case (s,v) => up(aggregate(v))}.mkString(sep)
   }
 
   /**
@@ -36,7 +36,8 @@ case class ExpressionRow(referenceGene: String,
   def as_tsv_simple_string(sep: String = "\t",
                            sep2: String = ";",
                            withGeneNames:Boolean = false,
-                           na: String = "N/A"): String = {
+                           na: String = "N/A",
+                          no_prefix: Boolean): String = {
     as_tsv_string(sep){
       case cell if cell.isEmpty => if(withGeneNames) na + sep + na else na
       case cell =>
@@ -47,13 +48,14 @@ case class ExpressionRow(referenceGene: String,
 
         val vals: String = cell.map(v=>v.samples.headOption.map(_._2).getOrElse(na)).mkString(sep2)
         if(withGeneNames) names + sep + vals else vals
-    }
+    }(no_prefix)
   }
 
   def as_tsv_sum_string(sep: String = "\t",
                            sep2: String = ";",
                            withGeneNames:Boolean = false,
-                           na: String = "N/A"): String = {
+                           na: String = "N/A",
+                        no_prefix: Boolean): String = {
     as_tsv_string(sep){
       case cell if cell.isEmpty => if(withGeneNames) na + sep + na else na
       case cell =>
@@ -63,13 +65,14 @@ case class ExpressionRow(referenceGene: String,
         } else ""
         val vals= cell.map(v=>v.samples.headOption.map(_._2).getOrElse(0.0)).sum
         names + vals.toString
-    }
+    }(no_prefix)
   }
 
   def as_tsv_avg_string(sep: String = "\t",
                         sep2: String = ";",
                         withGeneNames:Boolean = false,
-                        na: String = "N/A"): String = {
+                        na: String = "N/A",
+                        no_prefix: Boolean): String = {
     as_tsv_string(sep){
       case values if values.isEmpty => if(withGeneNames) na + sep + na + sep else na + sep
       case values =>
@@ -79,7 +82,7 @@ case class ExpressionRow(referenceGene: String,
         } else ""
         val vals= values.map(v=>v.samples.headOption.map(_._2).getOrElse(0.0)).sum / values.length.toDouble
         names + vals.toString
-    }
+    }(no_prefix)
   }
 }
 case class ExpressionResults(referenceGenes: Vector[String],

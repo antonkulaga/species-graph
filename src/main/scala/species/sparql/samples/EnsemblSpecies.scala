@@ -21,10 +21,10 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
        |      ?species :has_ensembl_url ?ensembl_url .
        |      ?species :is_animal_class ?animal_class .
        |      ?species :has_lifespan ?lifespan .
-       |      ?species :has_mass_g ?mass_g .
-       |      ?species :has_metabolic_rate ?metabolic_rate .
+       |      OPTIONAL { ?species :has_mass_g ?mass_g . }
+       |      OPTIONAL { ?species :has_metabolic_rate ?metabolic_rate . }
        |      ?species :has_taxon ?taxon .
-       |      ?species :has_temperature_kelvin ?temperature_kelvin .
+       |      OPTIONAL { ?species :has_temperature_kelvin ?temperature_kelvin . }
        |	    ?species rdf:type :Species .
        |} ORDER BY ?animal_class DESC(?lifespan)
        |""".stripMargin

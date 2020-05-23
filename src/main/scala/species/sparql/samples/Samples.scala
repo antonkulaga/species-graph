@@ -60,7 +60,11 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
 
   def samples_full(project: String = ":Cross-species", na: String = "N/A"): Vector[ListMap[String, String]] = {
    val query =  s"""${commonPrefixes}
-      |SELECT * WHERE
+      |SELECT ?bioproject ?series ?run ?species ?tissue ?sample_name ?characteristics
+      |?sequencer ?age ?sex ?tumor ?source ?study ?study_title
+      |?salmon_version ?library_layout ?library_selection
+      |?library_strategy ?lib_type ?bootstrap ?modified ?protocol
+      |WHERE
       |{
       |    ?bioproject rdf:type samples:Bioproject . #gets all bioprojects
       |    ?bioproject samples:has_series ?series .
@@ -69,7 +73,7 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
       |    ?run samples:used_in_project ${project} . #defines the project
       |    ?run samples:of_tissue ?tissue . #gets tissue
       |    ?run samples:has_sample_name ?sample_name .
-      |    ?run samples:has_characteristics ?characterists .
+      |    ?run samples:has_characteristics ?characteristics .
       |    ?run samples:has_sequencer ?sequencer .
       |    ?run samples:has_age ?age .
       |    ?run samples:has_sex ?sex .
