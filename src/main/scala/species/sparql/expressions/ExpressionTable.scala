@@ -1,9 +1,21 @@
 package species.sparql.expressions
 import better.files.File
+import enumeratum.{Enum, EnumEntry}
 import species.sparql.orthology.{OrthologyManager, OrthologyMode}
 import species.sparql.samples.SampleMini
 
 import scala.collection.immutable._
+
+sealed trait One2ManySettings extends EnumEntry with EnumEntry.Lowercase
+object One2ManySettings extends Enum[One2ManySettings]{
+  case object one2one_only extends One2ManySettings
+  case object separator extends One2ManySettings
+  case object sum extends One2ManySettings
+  case object sum_directed extends One2ManySettings
+  case object average extends One2ManySettings
+
+  val values = findValues
+}
 
 case class ExpressionTable(referenceGenes: Vector[String], exp: MultiSpeciesExpressions) {
 
@@ -32,6 +44,7 @@ case class ExpressionTable(referenceGenes: Vector[String], exp: MultiSpeciesExpr
                   sep: String = "\t",
                   withGeneNames : Boolean = false,
                   na: String = "N/A",
+                  one2ManySettings: One2ManySettings,
                   sl: Int = 10000, max_slides: Int = Int.MaxValue,
                   no_prefix: Boolean,
                     rewrite: Boolean// = false,
@@ -52,9 +65,15 @@ case class ExpressionTable(referenceGenes: Vector[String], exp: MultiSpeciesExpr
       val results: ExpressionResults = exp.expressionsResults(slide, mode)(orthologyManager)
       val rows = results.rows
       if(header && i==0) f.appendLine(rows.head.make_tsv_header(sep, withGeneNames)(no_prefix))
-      for(row <- rows){
-        f.appendLine(row.as_tsv_simple_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix))
+      one2ManySettings match {
+        case One2ManySettings.sum | One2ManySettings.sum_directed =>
+          for(row <- rows) f.appendLine(row.as_tsv_sum_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix))
+        case One2ManySettings.average =>
+          for(row <- rows) f.appendLine(row.as_tsv_avg_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix))
+        case other =>
+          for(row <- rows) f.appendLine(row.as_tsv_simple_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix))
       }
+
       println("writing parts ["+(i+1) + " from "+sls.length +s"] to ${f.pathAsString}")
     }
     println(s"SUCCESSFULLY FINISHED WRITING EXPRESSIONS TO ${f.pathAsString}")

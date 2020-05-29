@@ -15,7 +15,9 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
   def species(samples: Vector[String] = Vector.empty, project: String = ":Cross_species", na: String = "N/A"): Vector[ListMap[String, String]] = {
   val query =
     s"""$commonPrefixes
-       |SELECT DISTINCT ?species ?common_name	?animal_class ?lifespan	?ensembl_url	?mass_g	?metabolic_rate ?temperature_kelvin  ?taxon
+       |SELECT DISTINCT ?species ?common_name	?animal_class ?lifespan
+       |?ensembl_url ?mass_g	?metabolic_rate ?temperature ?temperature_kelvin ?gestation_days  ?taxon
+       |?female_maturity_days ?male_maturity_days ?litters_per_year ?inter_birth_interval ?birth_weight_g ?weaning_weight_g
        | WHERE {
        |      ?species :has_common_name ?common_name .
        |      ?species :has_ensembl_url ?ensembl_url .
@@ -24,7 +26,17 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
        |      OPTIONAL { ?species :has_mass_g ?mass_g . }
        |      OPTIONAL { ?species :has_metabolic_rate ?metabolic_rate . }
        |      ?species :has_taxon ?taxon .
+       |      OPTIONAL { ?species :has_temperature ?temperature . }
        |      OPTIONAL { ?species :has_temperature_kelvin ?temperature_kelvin . }
+       |      OPTIONAL { ?species :has_gestation_days ?gestation_days . }
+       |      OPTIONAL { ?species :has_female_maturity_days ?female_maturity_days . }
+       |      OPTIONAL { ?species :has_male_maturity_days ?male_maturity_days . }
+       |      OPTIONAL { ?species :has_weaning ?female_maturity_days . }
+       |      OPTIONAL { ?species :has_litter_size ?female_maturity_days . }
+       |      OPTIONAL { ?species :has_litters_per_year ?litters_per_year . }
+       |      OPTIONAL { ?species :has_inter_birth_interval ?inter_birth_interval . }
+       |      OPTIONAL { ?species :has_birth_weight_g ?birth_weight_g . }
+       |      OPTIONAL { ?species :has_weaning_weight_g ?weaning_weight_g . }
        |	    ?species rdf:type :Species .
        |} ORDER BY ?animal_class DESC(?lifespan)
        |""".stripMargin

@@ -40,7 +40,7 @@ trait SamplesCommands extends LogSupport with Extras{
   lazy val separator: Opts[String] = Opts.option[String](long = "sep", help = "TSV/CSV separator ( \t by default)").withDefault("\t")
   lazy val na: Opts[String] = Opts.option[String](long = "na", help = "What to write when data is not availible (default N/A)").withDefault("N/A")
   lazy val rewrite: Opts[Boolean] = Opts.flag(long = "rewrite", "if output folder exists then cleans it before writing").orFalse
-  lazy val prefixed: Opts[Boolean] = Opts.flag(long = "prefixed", "Deletes prefixes in the output").orFalse
+  lazy val prefixed: Opts[Boolean] = Opts.flag(long = "prefixed", "Keeps prefixes in the output").orFalse
   lazy val with_empty_rows: Opts[Boolean] = Opts.flag(long = "with_empty_rows", "if we should write empty rows").orFalse
 
 
@@ -53,7 +53,7 @@ trait SamplesCommands extends LogSupport with Extras{
   lazy val project: Opts[String] = Opts.option[String](long = "project", help = "which project do we take samples from (:Cross-species by default)").withDefault(":Cross-species")
 
 
-  def simple_query_write(query: Vector[ListMap[String, String]], path: String, sep: String, no_prefix: Boolean, rewrite: Boolean) = {
+  def simple_query_write(query: Vector[ListMap[String, String]], path: String, sep: String, na: String, no_prefix: Boolean, rewrite: Boolean) = {
     val f = File(path)
     if(f.exists && rewrite) {
       warn("output file " + f.pathAsString + " exists, deleting it to write new output")
@@ -63,11 +63,11 @@ trait SamplesCommands extends LogSupport with Extras{
     val keys = query.head.keys.toVector
     f.appendLine(keys.mkString(sep))
     for(s<-query) {
-      for(k<-keys) {
-        val str = s.get(k).map(v=>if(v=="") na else Prefixes.shorten(v)).getOrElse(na) + sep
-        f.append(up(str)(no_prefix))
-      }
-      f.appendLine("")
+      val l = (for(k<-keys) yield {
+        val str: String = s.get(k).map(v=>if(v=="") na else Prefixes.shorten(v)).getOrElse(na)
+        up(str)(no_prefix)
+      }).mkString(sep)
+      f.appendLine(l)
     }
     f
   }
@@ -81,7 +81,7 @@ trait SamplesCommands extends LogSupport with Extras{
     val s = new Samples(server)
     val samples = s.samples_full(project)
     if(samples.nonEmpty){
-      val f =simple_query_write(samples, path, sep, !with_prefix, true)
+      val f =simple_query_write(samples, path, sep, na,  !with_prefix, true)
       info(s"FINISHED WRITING SAMPLES TO ${f.pathAsString}")
     } else warn("NO SAMPLES FOUND!")
 
@@ -99,7 +99,7 @@ trait SamplesCommands extends LogSupport with Extras{
     //if(all) sp.species_in_samples() else sp.species_in_samples()
     val species = sp.species()
     if(species.nonEmpty){
-      val f = simple_query_write(species, path, sep , !with_prefix, true)
+      val f = simple_query_write(species, path, sep ,na, !with_prefix, true)
     } else println("NO SPECIES FOUND IN SAMPLES!")
   }
 

@@ -134,8 +134,8 @@ class ExpressionsSpec extends AnyWordSpec {
       println("--PANDA_1st_row_one_to_many--")
       pprint.pprintln(second)
       println("--PANDA_1st_row_one_to_many_TSV--")
-      println(second.make_tsv_header(withGeneNames = true))
-      println(second.as_tsv_simple_string(withGeneNames = true))
+      println(second.make_tsv_header(withGeneNames = true)(true))
+      println(second.as_tsv_simple_string(withGeneNames = true)(true))
       println(second.as_tsv_sum_string(withGeneNames = true))
     }
 

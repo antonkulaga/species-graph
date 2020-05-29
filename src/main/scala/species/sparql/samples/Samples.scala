@@ -71,24 +71,24 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
       |    ?series samples:has_run ?run . #gets sequencing runs from experimental series
       |    ?run samples:has_organism ?species . #species
       |    ?run samples:used_in_project ${project} . #defines the project
-      |    ?run samples:of_tissue ?tissue . #gets tissue
+      |    OPTIONAL { ?run samples:of_tissue ?tissue . } #gets tissue
       |    ?run samples:has_sample_name ?sample_name .
       |    ?run samples:has_characteristics ?characteristics .
       |    ?run samples:has_sequencer ?sequencer .
-      |    ?run samples:has_age ?age .
-      |    ?run samples:has_sex ?sex .
-      |    ?run samples:has_tumor ?tumor .
+      |    OPTIONAL { ?run samples:has_age ?age . }
+      |    OPTIONAL { ?run samples:has_sex ?sex . }
+      |    OPTIONAL { ?run samples:has_tumor ?tumor . }
       |    ?run samples:has_source ?source .
       |    ?run samples:has_study ?study .
       |    ?run samples:has_study_title ?study_title .
       |    ?run samples:has_salmon_version ?salmon_version .
-      |    ?run samples:has_library_layout ?library_layout .
-      |    ?run samples:has_library_selection ?library_selection .
-      |    ?run samples:has_library_strategy ?library_strategy .
-      |    ?run samples:has_libType ?lib_type .
-      |    ?run samples:has_numBootstraps ?bootstrap .
-      |    ?run samples:has_modified ?modified .
-      |    ?run samples:has_protocol ?protocol .
+      |    OPTIONAL { ?run samples:has_library_layout ?library_layout . }
+      |    OPTIONAL { ?run samples:has_library_selection ?library_selection . }
+      |    OPTIONAL { ?run samples:has_library_strategy ?library_strategy . }
+      |    OPTIONAL { ?run samples:has_libType ?lib_type . }
+      |    OPTIONAL { ?run samples:has_numBootstraps ?bootstrap . }
+      |    OPTIONAL { ?run samples:has_modified ?modified . }
+      |    OPTIONAL { ?run samples:has_protocol ?protocol . }
       |} ORDER BY ?species ?bioproject ?series ?run
       |""".stripMargin
     val result = select_query_ordered(query, na)
