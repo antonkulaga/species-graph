@@ -12,16 +12,18 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
  // def mammals_in_samples(): Vector[String] = get_species_in_samples("ens:Mammalia")
 
 
-  def species(samples: Vector[String] = Vector.empty, project: String = ":Cross_species", na: String = "N/A"): Vector[ListMap[String, String]] = {
+  def species(na: String = "N/A", in_samples_only: Boolean = false): Vector[ListMap[String, String]] = {
   val query =
     s"""$commonPrefixes
-       |SELECT DISTINCT ?species ?common_name	?animal_class ?lifespan
+       |SELECT DISTINCT ?species ?common_name	?animal_class ?order ?family ?lifespan
        |?ensembl_url ?mass_g	?metabolic_rate ?temperature ?temperature_kelvin ?gestation_days  ?taxon
        |?female_maturity_days ?male_maturity_days ?litters_per_year ?inter_birth_interval ?birth_weight_g ?weaning_weight_g
        | WHERE {
        |      ?species :has_common_name ?common_name .
        |      ?species :has_ensembl_url ?ensembl_url .
        |      ?species :is_animal_class ?animal_class .
+       |      OPTIONAL { ?species :of_order ?order . }
+       |      OPTIONAL { ?species :of_family ?family . }
        |      ?species :has_lifespan ?lifespan .
        |      OPTIONAL { ?species :has_mass_g ?mass_g . }
        |      OPTIONAL { ?species :has_metabolic_rate ?metabolic_rate . }
@@ -38,6 +40,7 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
        |      OPTIONAL { ?species :has_birth_weight_g ?birth_weight_g . }
        |      OPTIONAL { ?species :has_weaning_weight_g ?weaning_weight_g . }
        |	    ?species rdf:type :Species .
+       |      ${if (in_samples_only) "FILTER EXISTS {?s samples:has_organism ?species}" else ""}
        |} ORDER BY ?animal_class DESC(?lifespan)
        |""".stripMargin
         select_query_ordered(query, na)
@@ -47,9 +50,30 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
     val query = s"""${commonPrefixes}
                    |SELECT DISTINCT ?species ?common_name ?animal_class  ?lifespan ?ensembl_url  ?taxon WHERE
                    |{
-                   |	?species rdf:type :Species .
+                   |	  ?species rdf:type :Species .
                    |    ${values(name = "gene", genes.map(ens))}
                    |    ?species :has_gene ?gene .
+                   |    ?species :has_common_name ?common_name .
+                   |    ?species :is_animal_class ?animal_class .
+                   |    OPTIONAL { ?species :has_taxon ?taxon . }
+                   |    ?species :has_lifespan ?lifespan .
+                   |    OPTIONAL { ?species :has_ensembl_url ?ensembl_url . }
+                   |} ORDER BY ?animal_class DESC(?lifespan)
+                   |""".stripMargin
+    select_query(query)
+      .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"), f.getOrElse("ensembl_url", ""),  f.getOrElse("taxon", "")))
+  }
+
+  /**
+   * TODO: somewhat duplicate needs fixing
+   * @return
+   */
+  def ensembl_species(species: Seq[ String] = Vector.empty): Vector[EnsemblSpecies] = {
+    val query = s"""${commonPrefixes}
+                   |SELECT DISTINCT ?species ?common_name ?animal_class  ?lifespan ?ensembl_url  ?taxon WHERE
+                   |{
+                   |	  ?species rdf:type :Species .
+                   |    ${values("species", species.map(u))}
                    |    ?species :has_common_name ?common_name .
                    |    ?species :is_animal_class ?animal_class .
                    |    ?species :has_taxon ?taxon .
@@ -58,8 +82,9 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
                    |} ORDER BY ?animal_class DESC(?lifespan)
                    |""".stripMargin
     select_query(query)
-      .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"), f("ensembl_url"),  f("taxon")))
+      .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"), f.getOrElse("ensembl_url", ""),  f.getOrElse("taxon", "")))
   }
+
   /**
    * Gets species in the samples if
    * @param samples
@@ -74,31 +99,31 @@ class Species(val serverURL: String ="http://10.40.3.21:7200/") extends QueryBas
                    |    ?run samples:has_organism ?species .
                    |    ?species :has_common_name ?common_name .
                    |    ?species :is_animal_class ?animal_class .
-                   |    ?species :has_taxon ?taxon .
+                   |    OPTIONAL { ?species :has_taxon ?taxon . }
                    |    ?species :has_lifespan ?lifespan .
-                   |    ?species :has_ensembl_url ?ensembl_url .
+                   |    OPTIONAL { ?species :has_ensembl_url ?ensembl_url . }
                    |} ORDER BY ?animal_class DESC(?lifespan)
                    |""".stripMargin
     select_query(query)
-      .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"), f("ensembl_url"),  f("taxon")))
+      .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"),  f.getOrElse("ensembl_url", ""),  f.getOrElse("taxon", "")))
   }
 
   def species_in_samples_by_class(animal_classes: Vector[String]): Vector[EnsemblSpecies] = {
     val query = s"""${commonPrefixes}
                    |SELECT DISTINCT ?species ?common_name ?animal_class  ?lifespan ?ensembl_url  ?taxon WHERE
                    |{
-                   |	?species rdf:type :Species .
+                   |	  ?species rdf:type :Species .
                    |    ?run samples:has_organism ?species .
                    |    ?species :has_common_name ?common_name .
                    |    ${values("animal_class", animal_classes.map(u))}
                    |    ?species :is_animal_class ?animal_class .
-                   |    ?species :has_taxon ?taxon .
+                   |    OPTIONAL { ?species :has_taxon ?taxon . }
                    |    ?species :has_lifespan ?lifespan .
-                   |    ?species :has_ensembl_url ?ensembl_url .
+                   |    OPTIONAL { ?species :has_ensembl_url ?ensembl_url . }
                    |} ORDER BY DESC(?lifespan)
                    |""".stripMargin
     select_query(query)
-      .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"), f("ensembl_url"),  f("taxon")))
+      .map(f=>EnsemblSpecies(shorten(f("species")), f("common_name"), shorten(f("animal_class")),  f("lifespan"), f.getOrElse("ensembl_url", ""),  f.getOrElse("taxon", "")))
   }
 
 }

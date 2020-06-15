@@ -42,13 +42,13 @@ trait SamplesCommands extends LogSupport with Extras{
   lazy val rewrite: Opts[Boolean] = Opts.flag(long = "rewrite", "if output folder exists then cleans it before writing").orFalse
   lazy val prefixed: Opts[Boolean] = Opts.flag(long = "prefixed", "Keeps prefixes in the output").orFalse
   lazy val with_empty_rows: Opts[Boolean] = Opts.flag(long = "with_empty_rows", "if we should write empty rows").orFalse
+  lazy val all = Opts.flag(long = "all", "if we should load all of them or only the ones which are mentioned in samples").orFalse
 
+  lazy val in_species: Opts[String] = Opts.option[String](long = "in_species", help = "in which species we should search, can be allin_in_samples (default), all, or a list of species starting from the reference one").withDefault("all_in_samples")
 
   //lazy val samples_path: Opts[String] = Opts.option[String](long = "samples_path", help = "Where to store samples jnfo")
   //lazy val species_path: Opts[String] = Opts.option[String](long = "species_path", help = "Where to store species info")
   lazy val output: Opts[String] = Opts.option[String](long = "output", help = "File or Folder to write output")
-
-  lazy val all_species: Opts[Boolean] = Opts.flag(long = "all", "if we should include all species (incl. those for which we have no samples) to the index (false by default").orFalse
 
   lazy val project: Opts[String] = Opts.option[String](long = "project", help = "which project do we take samples from (:Cross-species by default)").withDefault(":Cross-species")
 
@@ -91,13 +91,12 @@ trait SamplesCommands extends LogSupport with Extras{
   lazy val species_index: Command[Unit] = Command(
     name = "species_index", header = "Generate species index"
   ) {
-    (output, server, separator, na, prefixed).mapN(write_species)
+    (output, server, separator, na, prefixed, all).mapN(write_species)
   }
 
-  def write_species(path: String, server: String, sep: String, na: String, with_prefix: Boolean): Unit ={
+  def write_species(path: String, server: String, sep: String, na: String, with_prefix: Boolean, all:Boolean): Unit ={
     val sp = new Species(server)
-    //if(all) sp.species_in_samples() else sp.species_in_samples()
-    val species = sp.species()
+    val species =  sp.species(in_samples_only = !all)
     if(species.nonEmpty){
       val f = simple_query_write(species, path, sep ,na, !with_prefix, true)
     } else println("NO SPECIES FOUND IN SAMPLES!")

@@ -63,7 +63,7 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
       |SELECT ?bioproject ?series ?run ?species ?tissue ?sample_name ?characteristics
       |?sequencer ?age ?sex ?tumor ?source ?study ?study_title
       |?salmon_version ?library_layout ?library_selection
-      |?library_strategy ?lib_type ?bootstrap ?modified ?protocol
+      |?library_strategy ?lib_type ?bootstrap ?protocol
       |WHERE
       |{
       |    ?bioproject rdf:type samples:Bioproject . #gets all bioprojects
@@ -87,7 +87,6 @@ class Samples(val serverURL: String = "http://10.40.3.21:7200/") extends QueryBa
       |    OPTIONAL { ?run samples:has_library_strategy ?library_strategy . }
       |    OPTIONAL { ?run samples:has_libType ?lib_type . }
       |    OPTIONAL { ?run samples:has_numBootstraps ?bootstrap . }
-      |    OPTIONAL { ?run samples:has_modified ?modified . }
       |    OPTIONAL { ?run samples:has_protocol ?protocol . }
       |} ORDER BY ?species ?bioproject ?series ?run
       |""".stripMargin

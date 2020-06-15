@@ -146,7 +146,6 @@ trait ExpressionsCommands  extends OrthologyCommands {
   lazy val expressions: Command[Unit] = Command(
     name = "expressions", header = "Generate expression tables"
   ) {
-
     (output, splitExpressions, one_2_many_settings, samples, genes, verbose, na, server, separator, rewrite, slide, confidence, prefixed).mapN {
       expressions_implementation
     }
