@@ -125,6 +125,7 @@ trait OrthologyCommands extends SamplesCommands {
         val species: Vector[EnsemblSpecies] = select_species(in_species, sp)
         implicit val orthologyManager = new OrthologyManager(server)
         val reference_genes = extract_genes(gs)
+        logger.info(s"extracting expressions for ${reference_genes.size} reference genes")
         val folder = File(path)
         val sps = (species.find(s=> s.latin_name.contains(ref_sp)).head+: species.filter(s=> !s.latin_name.contains(ref_sp)))
         this.logger.debug(s"orthology search for ${sps.length} species")
@@ -136,6 +137,7 @@ trait OrthologyCommands extends SamplesCommands {
       val folder = File(path)
       implicit val orthologyManager: OrthologyManager = new OrthologyManager(server)
       val reference_genes = extract_genes(gs)
+      logger.info(s"extracting expressions for ${reference_genes.size} reference genes")
       val species: Vector[EnsemblSpecies] = select_species(in_species, sp)
       val speciesGrouped = species.groupBy(s => split match {
         case SplitGenes.ByClass   => s.animal_class.replace("ens:", "").replace(":", "")

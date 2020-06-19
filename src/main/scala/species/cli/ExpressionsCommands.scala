@@ -160,7 +160,7 @@ trait ExpressionsCommands  extends OrthologyCommands {
    * @return
    */
   protected def initialize_expressions(path: String, gs: String, samples: String, server: String) = {
-    implicit val orthologyManager = new OrthologyManager(server)
+    implicit val orthologyManager: OrthologyManager = new OrthologyManager(server)
     val reference_genes = extract_genes(gs)
     val s = new Samples(server)
     val runs: Vector[SampleMini] = samples match {

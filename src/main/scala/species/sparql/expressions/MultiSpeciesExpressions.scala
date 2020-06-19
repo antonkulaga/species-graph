@@ -81,6 +81,7 @@ case class MultiSpeciesExpressions(samples: Vector[SampleMini], serverURL: Strin
     (for {
       (species, exp) <- expBySpecies
       ortho: Vector[Orthology] = orthologsBySpecies.getOrElse(species, orthologsBySpecies.getOrElse(u(species), Vector.empty[Orthology]))
+      if ortho.nonEmpty
         } yield {
       species -> exp.ortholog_expressions_by_ref(ortho)
     }

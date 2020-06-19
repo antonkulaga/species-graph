@@ -67,11 +67,11 @@ case class ExpressionTable(referenceGenes: Vector[String], exp: MultiSpeciesExpr
       if(header && i==0) f.appendLine(rows.head.make_tsv_header(sep, withGeneNames)(no_prefix))
       one2ManySettings match {
         case One2ManySettings.sum | One2ManySettings.sum_directed =>
-          for(row <- rows) f.appendLine(row.as_tsv_sum_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix))
+          for(row <- rows) f.appendLine(row.as_tsv_sum_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix, na = na))
         case One2ManySettings.average =>
-          for(row <- rows) f.appendLine(row.as_tsv_avg_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix))
+          for(row <- rows) f.appendLine(row.as_tsv_avg_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix, na = na))
         case other =>
-          for(row <- rows) f.appendLine(row.as_tsv_simple_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix))
+          for(row <- rows) f.appendLine(row.as_tsv_simple_string(sep, withGeneNames = withGeneNames,no_prefix = no_prefix, na = na))
       }
 
       println("writing parts ["+(i+1) + " from "+sls.length +s"] to ${f.pathAsString}")
